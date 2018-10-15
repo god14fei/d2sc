@@ -100,7 +100,7 @@ struct tx_stats {
 struct port_info {
 	unit8_t n_ports;
 	unit8_t id[RTE_MAX_ETHPORTS];
-	struct ether_addr max[RTE_MAX_ETHPORTS];
+	struct ether_addr mac[RTE_MAX_ETHPORTS];
 	volatile struct tx_stats rx_stats;
 	volatile struct rx_stats rx_stats;
 };
@@ -138,7 +138,7 @@ struct stats {
 struct d2sc_nf {
 	struct rte_ring *rx_q;
 	struct rte_ring *tx_q;
-	struct rte_ring *msg_q
+	struct rte_ring *msg_q;
 	struct d2sc_nf_info *nf_info;
 	unit8_t inst_id;
 	
@@ -171,7 +171,69 @@ struct d2sc_sc {
 #define FTP_MZ_INFO "ftp_info"
 
 #define MGR_MSG_Q_NAME "mgr_msg_q"
-#define NF_MSG_Q_NAME "nf_%u_msg_q"
-#define NF_INFO_MP_NAME "nf_info_mp"
+#define NF_MSG_Q_NAME "nf_%u_msg_q"		 // NF msg queue name
+#define NF_INFO_MP_NAME "nf_info_mp"   // Mempool name for the NF info
 #define NF_MSG_MP_NAME "nf_msg_mp"
 
+/* common names for NF states */
+#define NF_WAITTING_FOR_ID 0		// Begin in an startup process, and has no ID registered by manager yet
+#define NF_STARTING 1 					// In an startup process, and already has an ID
+#define NF_RUNNING 2						// Running normally
+#define NF_PAUSED 3							// Not receiving packets temporarily, but may regain in the future
+#define NF_STOPPED 4						// Stopped in a shupdown process
+#define NF_ID_CONFLICT 5 				// ID is conflicted with an already used ID
+#define NF_NO_IDS								// There are no IDs for this NF
+
+#define NF_NO_ID -1
+#define D2SC_NF_HANDLE_TX 1			// True if NFs start to pass packets to each other
+
+
+/***************************    helper functions   ***************************/
+static inline struct d2sc_pkt_meta *d2sc_get_pkt_meta(struct rte_mbuf *pkt) {
+	return (struct d2sc_pkt_meta *)&pkt->udata64;
+}
+
+struct inline unit8_t d2sc_get_pkt_sc_index(struct rte_mbuf *pkt) {
+	return ((struct d2sc_pkt_meta *)&pkt->udata64)->sc_index;
+}
+
+/* 
+ * Get the rx queue name with an NF ID
+ */
+static inline const char * get_rx_queue_name(unsigned id) {
+	static char buffer[sizeof(NF_RXQ_NAME) + 2];
+	
+	snprintf(buffer, sizeof(buffer) - 1, NF_RXQ_NAME, id);
+	return buffer;	
+}
+
+/* 
+ * Get the tx queue name with an NF ID
+ */
+static inline const char * get_tx_queue_name(unsigned id) {
+	static char buffer[sizeof(NF_TXQ_NAME) + 2];
+	
+	snprintf(buffer, sizeof(buffer) - 1, NF_TXQ_NAME, id);
+	return buffer;	
+}
+
+/*
+ * Get the msg name from the manager to an NF with an NF ID
+ */
+static inline const char * get_msg_queue_name(unsigned id) {
+	static char buffer[sizeof(NF_MSG_Q_NAME) + 2];
+	
+	snprintf(buffer, sizeof(buffer) - 1, NF_MSG_Q_NAME, id);
+	return buffer;
+}
+
+/*
+ * Function checks if a given NF is valid, meaning if it is running
+ */
+static inline int d2sc_nf_is_valid(struct d2sc_nf *nf) {
+	return nf && nf->nf_info && nf->nf_info->stats == NF_RUNNING;
+}
+
+#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER
+
+#endif // _D2SC_COMMON_H_
