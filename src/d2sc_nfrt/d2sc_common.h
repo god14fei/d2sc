@@ -26,7 +26,7 @@
 #include <rte_mbuf.h>
 #include <rte_ether.h>
 
-#include "d2sc_msg_common.h"
+#include "d2sc_msg.h"
 
 #define D2SC_MAX_SC_LENGTH 6		// the maximum service chain length
 #define MAX_NFS 16							// total numer of NF instances allowed
@@ -35,7 +35,7 @@
 
 #define NF_BQ_SIZE 16384			//size of the NF buffer queue
 
-#define PKT_RD_SIZE ((unit16_t)32)
+#define PKT_RD_SIZE ((uint16_t)32)
 
 #define D2SC_NF_ACT_DROP 0		// NF instance drop the packet
 #define D2SC_NF_ACT_NEXT 1   // to perform the next action determined by the flow table lookup
@@ -48,11 +48,11 @@
 #define D2SC_CLEAR_BIT(flags, n) ((flags) & (0 << (n)))
 
 struct d2sc_pkt_meta {
-	unit8_t act;
-	unit16_t dst;
-	unit16_t src;
-	unit8_t sc_index;
-	unit8_t flags;
+	uint8_t act;
+	uint16_t dst;
+	uint16_t src;
+	uint8_t sc_index;
+	uint8_t flags;
 };
 
 /*
@@ -61,7 +61,7 @@ struct d2sc_pkt_meta {
  */
 struct pkt_buf {
 	struct rte_mbuf *buf[PKT_RD_SIZE];
-	unit16_t cnt;
+	uint16_t cnt;
 };
 
 struct tx_thread {
@@ -89,17 +89,17 @@ struct nfs_bq {
 };
 
 struct rx_stats {
-	unit64_t rx[RTE_MAX_ETHPORTS];
+	uint64_t rx[RTE_MAX_ETHPORTS];
 };
 
 struct tx_stats {
-	unit64_t tx[RTE_MAX_ETHPORTS];
-	unit64_t tx_drop[RTE_MAX_ETHPORTS];
+	uint64_t tx[RTE_MAX_ETHPORTS];
+	uint64_t tx_drop[RTE_MAX_ETHPORTS];
 };
 
 struct port_info {
-	unit8_t n_ports;
-	unit8_t id[RTE_MAX_ETHPORTS];
+	uint8_t n_ports;
+	uint8_t id[RTE_MAX_ETHPORTS];
 	struct ether_addr mac[RTE_MAX_ETHPORTS];
 	volatile struct tx_stats rx_stats;
 	volatile struct rx_stats rx_stats;
@@ -109,9 +109,9 @@ struct port_info {
  * The structure to describe an NF
  */
 struct d2sc_nf_info {
-	unit16_t inst_id;
-	unit16_t type_id;
-	unit8_t stat;
+	uint16_t inst_id;
+	uint16_t type_id;
+	uint8_t status;
 	const char *name;
 };
 
@@ -119,17 +119,17 @@ struct d2sc_nf_info {
  *The structure with states from the NFs
  */	
 struct stats {
-	unit64_t rx;
-	unit64_t rx_drop;
-	unit64_t tx;
-	unit64_t tx_drop;
-	unit64_t tx_buf;
-	unit64_t tx_ret;
-	unit64_t act_out;
-	unit64_t act_tonf;
-	unit64_t act_drop;
-	unit64_t act_next;
-	unit64_t act_buf;
+	uint64_t rx;
+	uint64_t rx_drop;
+	uint64_t tx;
+	uint64_t tx_drop;
+	uint64_t tx_buf;
+	uint64_t tx_ret;
+	uint64_t act_out;
+	uint64_t act_tonf;
+	uint64_t act_drop;
+	uint64_t act_next;
+	uint64_t act_buf;
 };
 
 /*
@@ -140,7 +140,7 @@ struct d2sc_nf {
 	struct rte_ring *tx_q;
 	struct rte_ring *msg_q;
 	struct d2sc_nf_info *nf_info;
-	unit8_t inst_id;
+	uint8_t inst_id;
 	
 	volatile struct stats stats;
 };
@@ -149,13 +149,13 @@ struct d2sc_nf {
  * The structure to describe a service chain entry
  */
 struct d2sc_sc_entry {
-	unit16_t dst;
-	unit8_t act;
+	uint16_t dst;
+	uint8_t act;
 };
 
 struct d2sc_sc {
 	struct d2sc_sc_entry sc_entry[D2SC_MAX_SC_LENGTH];
-	unit8_t sc_len;
+	uint8_t sc_len;
 	int ref_cnt;
 };
 
@@ -170,8 +170,6 @@ struct d2sc_sc {
 #define SCP_MZ_INFO "scp_info"
 #define FTP_MZ_INFO "ftp_info"
 
-#define MGR_MSG_Q_NAME "mgr_msg_q"
-#define NF_MSG_Q_NAME "nf_%u_msg_q"		 // NF msg queue name
 #define NF_INFO_MP_NAME "nf_info_mp"   // Mempool name for the NF info
 #define NF_MSG_MP_NAME "nf_msg_mp"
 
@@ -193,7 +191,7 @@ static inline struct d2sc_pkt_meta *d2sc_get_pkt_meta(struct rte_mbuf *pkt) {
 	return (struct d2sc_pkt_meta *)&pkt->udata64;
 }
 
-struct inline unit8_t d2sc_get_pkt_sc_index(struct rte_mbuf *pkt) {
+struct inline uint8_t d2sc_get_pkt_sc_index(struct rte_mbuf *pkt) {
 	return ((struct d2sc_pkt_meta *)&pkt->udata64)->sc_index;
 }
 
@@ -218,20 +216,10 @@ static inline const char * get_tx_queue_name(unsigned id) {
 }
 
 /*
- * Get the msg name from the manager to an NF with an NF ID
- */
-static inline const char * get_msg_queue_name(unsigned id) {
-	static char buffer[sizeof(NF_MSG_Q_NAME) + 2];
-	
-	snprintf(buffer, sizeof(buffer) - 1, NF_MSG_Q_NAME, id);
-	return buffer;
-}
-
-/*
  * Function checks if a given NF is valid, meaning if it is running
  */
 static inline int d2sc_nf_is_valid(struct d2sc_nf *nf) {
-	return nf && nf->nf_info && nf->nf_info->stats == NF_RUNNING;
+	return nf && nf->nf_info && nf->nf_info->status == NF_RUNNING;
 }
 
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER
