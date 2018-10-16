@@ -70,15 +70,15 @@ static const struct rte_eth_conf port_conf = {
 		.jumbo_frame    = 0,                    /* jumbo frame support disabled */
 		.hw_strip_crc   = 1,                    /* CRC stripped by hardware */
 	},
-  .rx_adv_conf = {
-  	.rss_conf = {
-    	.rss_key = rss_symmetric_key,
-    	.rss_hf  = ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP,
-    },
-  },
-  .txmode = {
-    .mq_mode = ETH_MQ_TX_NONE,
-  },
+	.rx_adv_conf = {
+		.rss_conf = {
+			.rss_key = rss_symmetric_key,
+			.rss_hf  = ETH_RSS_IP | ETH_RSS_UDP | ETH_RSS_TCP,
+		},
+	},
+	.txmode = {
+		.mq_mode = ETH_MQ_TX_NONE,
+	},
 };
 
 static const struct rte_eth_rxconf rx_conf = {
@@ -209,7 +209,7 @@ int init(int argc, char *argv[]) {
 	
 	/* set up service chain pointer shared to NFs */
 	mz_scp = rte_memzone_reserve(MZ_SCP_INFO, sizeof(struct d2sc_sc *),
-																rte_socket_id(), NO_FLAGS);
+				rte_socket_id(), NO_FLAGS);
 	if (mz_scp == NULL) 
 		rte_exit(EXIT_FAILURE, "Cannot reserve memzone for service chain pointer\n");
 	else {
@@ -296,7 +296,7 @@ static int init_port(uint8_t port_id) {
   				&rx_conf, pktmbuf_mp);
 		if (retval < 0)
 			return retval;
-  }
+	}
   
 	for (q = 0; q < tx_rings; q++) {
 		retval = rte_eth_tx_queue_setup(port_id, q, tx_ring_size, rte_eth_dev_socket_id(port_id),
@@ -339,15 +339,15 @@ static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask) {
 			if (print_flag == 1) {
 				if(link.link_status)
 					printf("Port %d Link Up - speed %u "
-      				"Mbps - %s\n", port->id[portid],
-      				(unsigned)link.link_speed,
-      				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ? 
-      				("full-duplex") : ("half-duplex"));
+      					"Mbps - %s\n", port->id[portid],
+      					(unsigned)link.link_speed,
+      					(link.link_duplex == ETH_LINK_FULL_DUPLEX) ? 
+      					("full-duplex") : ("half-duplex"));
 				else
 					printf("Port %d Link Down\n",
-      				(uint8_t)port->id[portid]);
+								(uint8_t)port->id[portid]);
 				continue;
-      }
+			}
 			/* clear all_ports_up flag if any link down */
 			if (link.link_status == 0) {
 				all_ports_up = 0;
