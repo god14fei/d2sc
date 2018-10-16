@@ -61,15 +61,15 @@ static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask);
 
 static const struct rte_eth_conf port_conf = {
 	.rxmode = {
-  	.mq_mode        = ETH_MQ_RX_RSS,
-    .max_rx_pkt_len = ETHER_MAX_LEN,
-    .split_hdr_size = 0,
-  	.header_split   = 0,                    /* header split disabled */
-  	.hw_ip_checksum = 1,                    /* IP checksum offload enabled */
-  	.hw_vlan_filter = 0,                    /* VLAN filtering disabled */
-  	.jumbo_frame    = 0,                    /* jumbo frame support disabled */
-    .hw_strip_crc   = 1,                    /* CRC stripped by hardware */
-  },
+		.mq_mode        = ETH_MQ_RX_RSS,
+		.max_rx_pkt_len = ETHER_MAX_LEN,
+		.split_hdr_size = 0,
+		.header_split   = 0,                    /* header split disabled */
+		.hw_ip_checksum = 1,                    /* IP checksum offload enabled */
+		.hw_vlan_filter = 0,                    /* VLAN filtering disabled */
+		.jumbo_frame    = 0,                    /* jumbo frame support disabled */
+		.hw_strip_crc   = 1,                    /* CRC stripped by hardware */
+	},
   .rx_adv_conf = {
   	.rss_conf = {
     	.rss_key = rss_symmetric_key,
@@ -237,10 +237,10 @@ static int init_mbuf_mps(void) {
 	
 	printf("Creating mbuf mempool '%s' [%u mbufs] ...\n", MP_PKTMBUF_NAME, n_mbufs);
 	pktmbuf_mp = rte_mempool_create(MP_PKTMBUF_NAME, n_mbufs, MBUF_SIZE, MBUF_CACHE_SIZE, 
-															sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_init, 
-															NULL, rte_pktmbuf_init, NULL, rte_socket_id(), NO_FLAGS);
-  
-  return (pktmbuf_mp == NULL); /* 0 on success */
+						sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_init, 
+						NULL, rte_pktmbuf_init, NULL, rte_socket_id(), NO_FLAGS);
+
+	return (pktmbuf_mp == NULL); /* 0 on success */
 }
 
 /**
@@ -250,7 +250,7 @@ static int init_nf_info_mp(void) {
 	
 	printf("Creating mbuf pool '%s' ...\n", MP_NF_INFO_NAME);
 	nf_info_mp = rte_mempool_create(MP_NF_INFO_NAME, MAX_NFS, NF_INFO_SIZE, NF_INFO_CACHE_SIZE, 
-																	0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
+						0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
 																	
 	return (nf_info_mp == NULL); /* 0 on success */
 }
@@ -262,7 +262,7 @@ static int init_nf_msg_mp(void) {
 	
 	printf("Creating mbuf pool '%s' ...\n", MP_NF_MSG_NAME);
 	nf_msg_mp = rte_mempool_create(MP_NF_MSG_NAME, MAX_NFS * NF_MSG_Q_SIZE, NF_MSG_SIZE, 
-							 NF_MSG_CACHE_SIZE, 0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
+						NF_MSG_CACHE_SIZE, 0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
 							 
 	return (nf_msg_mp == NULL); /* 0 on success */
 }
@@ -283,9 +283,9 @@ static int init_port(uint8_t port_id) {
 	int retval;
 	
 	printf("Port %u init ... \n", (unsigned)port_id);
-  printf("Port %u socket id %u ... \n", (unsigned)port_id, (unsigned)rte_eth_dev_socket_id(port_id));
-  printf("Port %u Rx rings %u ... \n", (unsigned)port_id, (unsigned)rx_rings);
-  fflush(stdout);
+	printf("Port %u socket id %u ... \n", (unsigned)port_id, (unsigned)rte_eth_dev_socket_id(port_id));
+	printf("Port %u Rx rings %u ... \n", (unsigned)port_id, (unsigned)rx_rings);
+	fflush(stdout);
   
   /* port initialization - configure port, and set up rx and tx rings */
   if ((retval = rte_eth_dev_configure(port_id, rx_rings, tx_rings, &port_conf)) != 0)
@@ -394,11 +394,11 @@ init_shm_rings(void) {
 		msgq_name = get_msg_queue_name(i);
 		nfs[i].inst_id = i;
 		nfs[i].rx_q = rte_ring_create(rxq_name, ring_size,
-									 socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
+						socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
 		nfs[i].tx_q = rte_ring_create(txq_name, ring_size,
-									 socket_id, RING_F_SC_DEQ); /* multi prod, single cons */
+						socket_id, RING_F_SC_DEQ); /* multi prod, single cons */
 		nfs[i].msg_q = rte_ring_create(msgq_name, msg_ring_size,
-									 socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
+						socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
 		
 		if (nfs[i].rx_q == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot create rx ring queue for NF %u\n", i);
@@ -417,7 +417,7 @@ init_shm_rings(void) {
  */
 static int init_info_queue(void) {
 	incoming_msg_queue = rte_ring_create(MGR_MSG_Q_NAME, MAX_NFS, 
-											rte_socket_id(), RING_F_SC_DEQ);	/* multi prod, single cons */
+					rte_socket_id(), RING_F_SC_DEQ);	/* multi prod, single cons */
 											
 	if (incoming_msg_queue == NULL) 
 		rte_exit(EXIT_FAILURE, "Cannot create incoming msg queue");
