@@ -237,8 +237,8 @@ static int init_mbuf_mps(void) {
 	
 	printf("Creating mbuf mempool '%s' [%u mbufs] ...\n", MP_PKTMBUF_NAME, n_mbufs);
 	pktmbuf_mp = rte_mempool_create(MP_PKTMBUF_NAME, n_mbufs, MBUF_SIZE, MBUF_CACHE_SIZE, 
-						sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_init, 
-						NULL, rte_pktmbuf_init, NULL, rte_socket_id(), NO_FLAGS);
+				sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_init, 
+				NULL, rte_pktmbuf_init, NULL, rte_socket_id(), NO_FLAGS);
 
 	return (pktmbuf_mp == NULL); /* 0 on success */
 }
@@ -250,7 +250,7 @@ static int init_nf_info_mp(void) {
 	
 	printf("Creating mbuf pool '%s' ...\n", MP_NF_INFO_NAME);
 	nf_info_mp = rte_mempool_create(MP_NF_INFO_NAME, MAX_NFS, NF_INFO_SIZE, NF_INFO_CACHE_SIZE, 
-						0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
+				0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
 																	
 	return (nf_info_mp == NULL); /* 0 on success */
 }
@@ -262,7 +262,7 @@ static int init_nf_msg_mp(void) {
 	
 	printf("Creating mbuf pool '%s' ...\n", MP_NF_MSG_NAME);
 	nf_msg_mp = rte_mempool_create(MP_NF_MSG_NAME, MAX_NFS * NF_MSG_Q_SIZE, NF_MSG_SIZE, 
-						NF_MSG_CACHE_SIZE, 0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
+				NF_MSG_CACHE_SIZE, 0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
 							 
 	return (nf_msg_mp == NULL); /* 0 on success */
 }
@@ -287,35 +287,35 @@ static int init_port(uint8_t port_id) {
 	printf("Port %u Rx rings %u ... \n", (unsigned)port_id, (unsigned)rx_rings);
 	fflush(stdout);
   
-  /* port initialization - configure port, and set up rx and tx rings */
-  if ((retval = rte_eth_dev_configure(port_id, rx_rings, tx_rings, &port_conf)) != 0)
+	/* port initialization - configure port, and set up rx and tx rings */
+	if ((retval = rte_eth_dev_configure(port_id, rx_rings, tx_rings, &port_conf)) != 0)
   	return retval;
   
-  for (q = 0; q < rx_rings; q++) {
-  	retval = rte_eth_rx_queue_setup(port_id, q, rx_ring_size, rte_eth_dev_socket_id(port_id), 
-  																	&rx_conf, pktmbuf_mp);
-  	if (retval < 0)
-  		return retval;
+	for (q = 0; q < rx_rings; q++) {
+		retval = rte_eth_rx_queue_setup(port_id, q, rx_ring_size, rte_eth_dev_socket_id(port_id), 
+  				&rx_conf, pktmbuf_mp);
+		if (retval < 0)
+			return retval;
   }
   
-  for (q = 0; q < tx_rings; q++) {
-  	retval = rte_eth_tx_queue_setup(port_id, q, tx_ring_size, rte_eth_dev_socket_id(port_id),
-  																	&tx_conf);
-  	if (retval < 0)
+	for (q = 0; q < tx_rings; q++) {
+		retval = rte_eth_tx_queue_setup(port_id, q, tx_ring_size, rte_eth_dev_socket_id(port_id),
+  				&tx_conf);
+		if (retval < 0)
   		return retval;
-  }
+	}
   
-  /* Enable RX in promiscuous mode for the Ethernet device */
-  rte_eth_promiscuous_enable(port_id);
+	/* Enable RX in promiscuous mode for the Ethernet device */
+	rte_eth_promiscuous_enable(port_id);
   
-  /* Start the Ethernet port */
-  retval = rte_eth_dev_start(port_id);
-  if (retval < 0)
-  	return retval;
+	/* Start the Ethernet port */
+	retval = rte_eth_dev_start(port_id);
+	if (retval < 0)
+		return retval;
   	
-  printf("done: \n");
+	printf("done: \n");
   
-  return 0;
+	return 0;
 }	
 
 /* Check the link status of all ports in up to 9s, and print them finally */
@@ -335,40 +335,40 @@ static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask) {
 				continue;
 			memset(&link, 0, sizeof(link));
 		 	rte_eth_link_get_nowait(ports->id[portid], &link);
-      /* print link status if flag set */
-      if (print_flag == 1) {
-      	if(link.link_status)
-      		printf("Port %d Link Up - speed %u "
-      					"Mbps - %s\n", port->id[portid],
-      					(unsigned)link.link_speed,
-      					(link.link_duplex == ETH_LINK_FULL_DUPLEX) ? 
-      					("full-duplex") : ("half-duplex"));
-      	else
-      		printf("Port %d Link Down\n",
-      					(uint8_t)port->id[portid]);
-      	continue;
+			/* print link status if flag set */
+			if (print_flag == 1) {
+				if(link.link_status)
+					printf("Port %d Link Up - speed %u "
+      				"Mbps - %s\n", port->id[portid],
+      				(unsigned)link.link_speed,
+      				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ? 
+      				("full-duplex") : ("half-duplex"));
+				else
+					printf("Port %d Link Down\n",
+      				(uint8_t)port->id[portid]);
+				continue;
       }
-      /* clear all_ports_up flag if any link down */
-      if (link.link_status == 0) {
-      	all_ports_up = 0;
-      	break;
-      }
+			/* clear all_ports_up flag if any link down */
+			if (link.link_status == 0) {
+				all_ports_up = 0;
+				break;
+			}
 		}
 		/* after finally printing all link status, get out */
 		if (print_flag == 1)
 			break;
 		
 		if (all_ports_up == 0) {
-    	printf(".");
-    	fflush(stdout);
-    	rte_delay_ms(CHECK_INTERVAL);
-    }
-      
-    /* set the print_flag if all ports up or timeout */
-    if (all_ports_up == 1 || n == (MAX_CHECK_TIME - 1)) {
-    	print_flag = 1;
-    	print("done\n");
-    }
+			printf(".");
+			fflush(stdout);
+			rte_delay_ms(CHECK_INTERVAL);
+		}
+	      
+		/* set the print_flag if all ports up or timeout */
+		if (all_ports_up == 1 || n == (MAX_CHECK_TIME - 1)) {
+			print_flag = 1;
+			print("done\n");
+		}
 	}
 }
 
@@ -394,11 +394,11 @@ init_shm_rings(void) {
 		msgq_name = get_msg_queue_name(i);
 		nfs[i].inst_id = i;
 		nfs[i].rx_q = rte_ring_create(rxq_name, ring_size,
-						socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
+					socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
 		nfs[i].tx_q = rte_ring_create(txq_name, ring_size,
-						socket_id, RING_F_SC_DEQ); /* multi prod, single cons */
+					socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
 		nfs[i].msg_q = rte_ring_create(msgq_name, msg_ring_size,
-						socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
+					socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
 		
 		if (nfs[i].rx_q == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot create rx ring queue for NF %u\n", i);
@@ -417,7 +417,7 @@ init_shm_rings(void) {
  */
 static int init_info_queue(void) {
 	incoming_msg_queue = rte_ring_create(MGR_MSG_Q_NAME, MAX_NFS, 
-					rte_socket_id(), RING_F_SC_DEQ);	/* multi prod, single cons */
+				rte_socket_id(), RING_F_SC_DEQ);	/* multi prod, single cons */
 											
 	if (incoming_msg_queue == NULL) 
 		rte_exit(EXIT_FAILURE, "Cannot create incoming msg queue");
