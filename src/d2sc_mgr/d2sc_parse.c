@@ -76,7 +76,7 @@ static int parse_stats_sleep_time(const char *sleep_time);
 /*********************************Interfaces**********************************/
 
 
-int parse_mgr_args(uint8_t max_ports, int argc, char *argv[]) {
+int parse_mgr_args(uint8_t n_ports, int argc, char *argv[]) {
 	int opt_index, opt;
 	char **argv_opt = argv;
 	
@@ -86,12 +86,12 @@ int parse_mgr_args(uint8_t max_ports, int argc, char *argv[]) {
 		{"default-nt",       required_argument,    NULL,    'd'},
 		{"num_rx_threads",   no_argument,          NULL,    'r'},
 		{"stats-output",     no_argument,          NULL,    's'},
-		{"stats-sleep-time", no_argument,          NULL,    'z'},	
+		{"stats-sleep-time", no_argument,          NULL,    'z'}
 	};
 	
 	progname = argv[0];
 	
-	while ((opt = getopt_long(argc, argv_opt, "p:t:d:s:z:", lgopts, &opt_index)) != EOF) {
+	while ((opt = getopt_long(argc, argv_opt, "p:t:d:r:s:z:", lgopts, &opt_index)) != EOF) {
 		switch (opt) {
 			case 'p': 
 				if (parse_port_mask(n_ports, optarg) != 0) {
@@ -142,14 +142,14 @@ int parse_mgr_args(uint8_t max_ports, int argc, char *argv[]) {
 
 static void usage(void) {
 	printf(
-			"%s [EAL options] -- \n"
-			"\t-p (manatory) PORTMASK: hexadecimal bitmask of ports to use\n"
-			"\t-t NUM_NTS: nuber of unique nf types allowed. defaults to 16 (optional)\n"
-			"\t-d DEFAULT_NT: the nf type to initially receive packets. defaults to 1 (optional)\n"
-			"\t-r NUM_RX_THREAD: the number of rx thread to use. defaults to 2 (optional)\n"
-			"\t-s STATS_OUTPUT: where to output manager runtime stats (stdout/stderr). defaults to NONE (optional)\n"
-			"\t-z STATS_SLEEP_TIME: the stats update interval (in seconds)\n",
-			progname);
+		"%s [EAL options] -- \n"
+		"\t-p (manatory) PORTMASK: hexadecimal bitmask of ports to use\n"
+		"\t-t NUM_NTS: nuber of unique nf types allowed. defaults to 16 (optional)\n"
+		"\t-d DEFAULT_NT: the nf type to initially receive packets. defaults to 1 (optional)\n"
+		"\t-r NUM_RX_THREADS: the number of rx thread to use. defaults to 2 (optional)\n"
+		"\t-s STATS_OUTPUT: where to output manager runtime stats (stdout/stderr). defaults to NONE (optional)\n"
+		"\t-z STATS_SLEEP_TIME: the stats update interval (in seconds)\n",
+		progname);
 }
 
 
@@ -173,9 +173,9 @@ static int parse_port_mask(uint8_t n_ports, const char *port_mask) {
 		
 	/* while loop go through bits of the mask and mark ports */
 	while (pm != 0) {
-		if (pm & 0x01) {	/*bit of 1 to represent a usable port */
+		if (pm & 0x01) {	/*bit of 1 represents a usable port */
 			if (num >= n_ports)
-				printf("WARNING: requested port %u is non-existent - ignoring\n", (unsigned)n);
+				printf("WARNING: requested port %u is non-existent - ignoring\n", (unsigned)num);
 			else
 				ports->id[ports->n_ports++] = num;			
 		}
