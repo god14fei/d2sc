@@ -346,7 +346,7 @@ callback_hander callback) {
 		
 		/* Flush the packet buffers */
 		d2sc_pkt_enqueue_tx_ring(bq->tx_buf, info->inst_id);
-		d2sc_pkt_fush_all_nfs(bq);
+		d2sc_pkt_fush_all_bqs(bq);
 		
 		d2sc_nfrt_dequeue_new_msgs(nfs[info->inst_id].msg_q);
 		
