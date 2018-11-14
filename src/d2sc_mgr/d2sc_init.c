@@ -23,7 +23,8 @@
 
 /********************************Global variables*****************************/
 
-struct rte_ring *incoming_msg_queue;
+struct rte_ring *new_msg_ring;
+struct rte_ring *scale_msg_ring;
 
 struct d2sc_nf *nfs = NULL;
 struct port_info *ports = NULL;
@@ -33,6 +34,7 @@ struct rte_mempool *nf_info_mp;
 struct rte_mempool *nf_msg_mp;
 uint16_t **nts;
 uint16_t *nfs_per_nt_num;
+uint16_t *nfs_pet_nt_available;		// Number of available NFs per NF type, i.e., not overloaded
 struct d2sc_sc *default_sc;
 struct d2sc_sc **default_sc_p;
 
@@ -44,7 +46,8 @@ static int init_nf_info_mp(void);
 static int init_nf_msg_mp(void);
 static int init_port(uint8_t port_id);
 static int init_shm_rings(void);
-static int init_info_queue(void);
+static int init_new_msg_ring(void);
+static int init_scale_msg_ring(void);
 static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask);
 
 
@@ -111,6 +114,7 @@ int init(int argc, char *argv[]) {
 	const struct rte_memzone *mz_scp;
 	const struct rte_memzone *mz_nts;
 	const struct rte_memzone *mz_nfs_per_nt;
+	const struct rte_memzone *mz_nt_available;
 	uint8_t i, n_ports, port_id;
 	
 	/* init EAL, parsing EAL args */
@@ -120,9 +124,9 @@ int init(int argc, char *argv[]) {
 	argc -= retval;
 	argv += retval;
 	
-	#ifdef RTE_LIBRTE_PDUMP
-        rte_pdump_init(NULL);
-	#endif
+#ifdef RTE_LIBRTE_PDUMP
+	rte_pdump_init(NULL);
+#endif
 	
 	/* get total number of ports */
 	n_ports = rte_eth_dev_count();
@@ -161,6 +165,12 @@ int init(int argc, char *argv[]) {
 	else
 		nfs_per_nt_num = mz_nfs_per_nt->addr;
 		
+	mz_nt_available = rte_memzone_reserve(MZ_NT_AVAILABLE_INFO, sizeof(uint16_t) * num_nts, rte_socket_id(), NO_FLAGS);
+	if (mz_nt_available == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot reserve memzone for nt available information.\n");
+	else
+		nfs_per_nt_available = mz_nt_available->addr;
+		
 	/* parse manger specific arguments */
 	retval = parse_mgr_args(n_ports, argc, argv);
 	if (retval != 0) 
@@ -196,7 +206,10 @@ int init(int argc, char *argv[]) {
 	init_shm_rings();
 	
 	/* initialize a queue for newly created NFs */
-	init_info_queue();
+	init_new_msg_ring();
+	
+	/* initialize a queue for NF scaling msg */
+	init_scale_msg_ring();
 	
 	/* initialize a default service chain */
 	default_sc = d2sc_sc_create();
@@ -341,8 +354,8 @@ static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask) {
 					printf("Port %d Link Up - speed %u "
       					"Mbps - %s\n", port->id[portid],
       					(unsigned)link.link_speed,
-      					(link.link_duplex == ETH_LINK_FULL_DUPLEX) ? 
-      					("full-duplex") : ("half-duplex"));
+								(link.link_duplex == ETH_LINK_FULL_DUPLEX) ? 
+								("full-duplex") : ("half-duplex"));
 				else
 					printf("Port %d Link Down\n",
 								(uint8_t)port->id[portid]);
@@ -393,6 +406,8 @@ init_shm_rings(void) {
 		txq_name = get_tx_queue_name(i);
 		msgq_name = get_msg_queue_name(i);
 		nfs[i].inst_id = i;
+		nfs[i].ol_flag = 0;		// preset the ovload flat to 0, no overload
+		nfs[i].pkt_rate = 0;	// initialize the pkt rate of all NFs
 		nfs[i].rx_q = rte_ring_create(rxq_name, ring_size,
 					socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
 		nfs[i].tx_q = rte_ring_create(txq_name, ring_size,
@@ -415,12 +430,25 @@ init_shm_rings(void) {
 /**
  * Allocate a rte_ring for newly created NFs
  */
-static int init_info_queue(void) {
-	incoming_msg_queue = rte_ring_create(MGR_MSG_Q_NAME, MAX_NFS, 
+static int init_new_msg_ring(void) {
+	new_msg_ring = rte_ring_create(MGR_MSG_Q_NAME, MAX_NFS, 
 				rte_socket_id(), RING_F_SC_DEQ);	/* multi prod, single cons */
 											
-	if (incoming_msg_queue == NULL) 
-		rte_exit(EXIT_FAILURE, "Cannot create incoming msg queue");
+	if (new_msg_ring == NULL) 
+		rte_exit(EXIT_FAILURE, "Cannot create msg queue for new NFs");
+		
+	return 0;
+}
+
+/**
+ * Allocate a rte_ring for NF scaling msgs
+ */
+static int init_scale_msg_ring(void) {
+	scale_msg_ring = rte_ring_create(MGR_SCALE_Q_NAME, MAX_NTS, 
+				rte_socket_id(), RING_F_SC_DEQ);	/* multi prod, single cons */
+											
+	if (scale_msg_ring == NULL) 
+		rte_exit(EXIT_FAILURE, "Cannot create scale queue for NFs");
 		
 	return 0;
 }

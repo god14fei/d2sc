@@ -39,13 +39,13 @@ uint16_t default_nt = DEFAULT_NT_ID;
 /* global variable for number of tx threads */
 uint16_t num_rx_threads = D2SC_NUM_RX_THREADS;
 
-/* global var to where to print stats */
+/* global variable to where to print stats */
 D2SC_STATS_OUTPUT stats_dst = D2SC_STATS_NONE;
 
-/* global var for how long stats should wait before updating */
+/* global variable for how long stats should wait before updating */
 uint16_t global_stats_sleep_time = 1;
 
-/* global var for program name */
+/* global variable for program name */
 static const char *progname;
 
 

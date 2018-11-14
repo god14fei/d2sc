@@ -37,7 +37,7 @@
 
 /*****************************Internal library********************************/
 
-#include "d2sc_mgr/d2sc_args.h"
+#include "d2sc_mgr/d2sc_prase.h"
 #include "d2sc_mgr/d2sc_stats.h"
 #include "d2sc_includes.h"
 #include "d2sc_common.h"
@@ -70,8 +70,11 @@
 
 /*************************External global variables***************************/
 
-/* ring queue for NF to manager message */
-extern struct rte_ring *incoming_msg_queue;
+/* ring queue for NF to Manager message */
+extern struct rte_ring *new_msg_ring;
+
+/* ring queue for Manager to NF scale message */
+struct rte_ring *scale_msg_ring;
 
 /* the shared port information: port numbers, rx and tx stats, etc. */
 extern struct port_info *ports;
@@ -81,8 +84,10 @@ extern struct rte_mempool *nf_msg_mp;
 extern uint16_t num_nfs;
 extern uint16_t num_nts;
 extern uint16_t default_nt;
+extern uint16_t num_rx_threads;
 extern uint16_t **nts;
 extern uint16_t *nfs_per_nt_num;
+extern uint16_t *nfs_per_nt_available;
 extern unsigned num_sockets;
 extern struct d2sc_sc *default_sc;
 extern struct d2sc_ft *ft;

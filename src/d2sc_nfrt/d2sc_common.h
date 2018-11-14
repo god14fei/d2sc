@@ -28,12 +28,13 @@
 
 #include "d2sc_msg.h"
 
-#define D2SC_MAX_SC_LENGTH 6		// the maximum service chain length
-#define MAX_NFS 16							// total numer of NF instances allowed
-#define MAX_NTS 16							// total numer of different NF types allowed
-#define MAX_NFS_PER_NT 8				// max numer of NF instances per NF type
+#define D2SC_MAX_SC_LEN 6		// the maximum service chain length
+#define MAX_NFS 16							// max number of NF instances allowed
+#define MAX_NEW_NFS 8						// max number of new NFs that are for scaling
+#define MAX_NTS 16							// total number of different NF types allowed
+#define MAX_NFS_PER_NT 8				// max number of NF instances per NF type
 
-#define NF_BQ_SIZE 16384			//size of the NF buffer queue
+#define NF_RING_SIZE 16384			//size of the NF buffer queue
 
 #define PKT_RD_SIZE ((uint16_t)32)
 
@@ -70,39 +71,47 @@ struct tx_thread {
 	struct pkt_buf *tx_bufs;
 };
 
+struct scaler_thread {
+	unsigned block_nfs[MAX_NFS];
+	uint16_t nfs_stime[MAX_NFS];
+	
+};
+
 /*
  * The buffer queue used by the manager
  */ 
-struct mgr_bq {
+struct buf_queue {
 	unsigned id;
-	struct tx_thread *tx_thread;
-	struct pkt_buf *rx_buf;
+	uint8_t mgr_nf;		// mgr uses buf_queue if mgr_nf = 1, else nf uses buf_queue
+	union {
+			struct tx_thread *tx_thread;
+			struct pkt_buf *tx_buf;
+	};
+	struct pkt_buf *rx_bufs;
 };
 
 /*
  * The buffer queue used by the NFs
  */ 
-struct nfs_bq {
-	unsigned id;
-	struct pkt_buf *tx_buf;
-	struct pkt_buf *rx_buf;
-};
-
-struct rx_stats {
-	uint64_t rx[RTE_MAX_ETHPORTS];
-};
-
-struct tx_stats {
-	uint64_t tx[RTE_MAX_ETHPORTS];
-	uint64_t tx_drop[RTE_MAX_ETHPORTS];
-};
+//struct nf_bq {
+//	unsigned id;
+//	struct pkt_buf *tx_buf;
+//	struct pkt_buf *rx_bufs;
+//};
 
 struct port_info {
 	uint8_t n_ports;
 	uint8_t id[RTE_MAX_ETHPORTS];
 	struct ether_addr mac[RTE_MAX_ETHPORTS];
-	volatile struct tx_stats rx_stats;
-	volatile struct rx_stats rx_stats;
+	
+	/* Structures about stats of ports */
+	struct {
+		volatile uint64_t rx[RTE_MAX_ETHPORTS];
+	} rx_stats;
+	struct {
+		volatile uint64_t tx[RTE_MAX_ETHPORTS];
+		volatile uint64_t tx_drop[RTE_MAX_ETHPORTS];
+	} tx_stats;
 };
 
 /* 
@@ -112,6 +121,8 @@ struct d2sc_nf_info {
 	uint16_t inst_id;
 	uint16_t type_id;
 	uint8_t status;
+	uint16_t srv_time;		// service time of an NF 
+	uint16_t max_load;			// max load of an NF, specified by the provider
 	const char *name;
 };
 
@@ -140,7 +151,10 @@ struct d2sc_nf {
 	struct rte_ring *tx_q;
 	struct rte_ring *msg_q;
 	struct d2sc_nf_info *nf_info;
-	uint8_t inst_id;
+	uint16_t inst_id;
+
+	uint8_t ol_flag;			// NF overlaod flag
+	uint16_t pkt_rate;		// Packet arrival rate through the NF 
 	
 	volatile struct stats stats;
 };
@@ -154,7 +168,7 @@ struct d2sc_sc_entry {
 };
 
 struct d2sc_sc {
-	struct d2sc_sc_entry sc_entry[D2SC_MAX_SC_LENGTH];
+	struct d2sc_sc_entry sc_entry[D2SC_MAX_SC_LEN];
 	uint8_t sc_len;
 	int ref_cnt;
 };
@@ -162,16 +176,17 @@ struct d2sc_sc {
 /* define common names for structures shared between manager and NF */
 #define NF_RXQ_NAME "nf_%u_RX"
 #define NF_TXQ_NAME "nf_%u_TX"
-#define PKTMBUF_POOL_NAME "pktmbuf_pool"
-#define PORT_MZ_INFO "port_info"
-#define NF_MZ_INFO "nf_info"
-#define NT_MZ_INFO "nt_info"
-#define NF_PER_NT_MZ_INFO "nf_per_nt_info"
-#define SCP_MZ_INFO "scp_info"
-#define FTP_MZ_INFO "ftp_info"
 
-#define NF_INFO_MP_NAME "nf_info_mp"   // Mempool name for the NF info
-#define NF_MSG_MP_NAME "nf_msg_mp"
+#define MZ_PORT_INFO "port_info"
+#define MZ_NF_INFO "nf_info"
+#define MZ_NTS_INFO "nts_info"
+#define MZ_NFS_PER_NT_INFO "nfs_per_nt_info"
+#define MZ_NT_AVAILABLE_INFO "nt_available_info"
+#define MZ_SCP_INFO "scp_info"
+#define MZ_FTP_INFO "ftp_info"
+
+#define MP_PKTMBUF_NAME "pktmbuf_mp"
+#define MP_NF_INFO_NAME "nf_info_mp"   // Mempool name for the NF info
 
 /* common names for NF states */
 #define NF_WAITTING_FOR_ID 0		// Begin in an startup process, and has no ID registered by manager yet
