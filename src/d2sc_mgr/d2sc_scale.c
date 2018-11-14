@@ -138,10 +138,11 @@ inline static int d2sc_scale_get_info(uint16_t *ids) {
 		
 		/* Skip those NFs that are not in running status */
 		if (info->status != NF_RUNNING)
+			rte_mempool_put(nf_msg_mp, (void *)msg);
 			continue;
 		
 		ids[i] = info->inst_id;	
-		nfs[ids[i]]->nf_info = info;
+		nfs[ids[i]].nf_info = info;
 		
 		rte_mempool_put(nf_msg_mp, (void *)msg);
 	}
