@@ -27,3 +27,13 @@ struct d2sc_scale_msg {
 	uint8_t scale_sig;
 	void *scale_data;
 };
+
+
+void d2sc_scale_check_overload(void);
+
+void d2sc_scale_ol_signal(void);
+
+void d2sc_scale_execute(void);
+
+
+#endif //	_D2SC_SCALE_H_

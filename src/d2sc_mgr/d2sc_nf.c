@@ -58,16 +58,6 @@ inline static int d2sc_nf_ready(struct d2sc_nf_info *nf_info);
 inline static int d2sc_nf_stop(struct d2sc_nf_info *nf_info);
 
 
-/*
- * Function scaling an NF.
- *
- * Input  : a pointer to the NF's informations
- * Output : an error code
- *
- */
-inline static int d2sc_nf_scale(struct d2sc_nf_info *nf_info);
-
-
 /********************************Interfaces***********************************/
 
 uint16_t d2sc_nf_next_inst_id(void) {
@@ -187,10 +177,6 @@ inline static int d2sc_nf_ready(struct d2sc_nf_info *nf_info) {
 	nts[nt_id][nt_num] = nf_info->inst_id;
 	num_nfs++;
 	return 0;
-}
-
-inline static int d2sc_nf_scale(struct d2sc_nf_info *nf_info) {
-	 
 }
 
 

@@ -25,6 +25,7 @@
 #include "d2sc_nfrt.h"
 #include "d2sc_includes.h"
 #include "d2sc_sc.h"
+#include "d2sc_mgr/d2sc_scale.h"
 
 
 /**********************************Macros*************************************/
@@ -96,7 +97,7 @@ static int d2sc_nfrt_parse_args(int argc, char *argv[]);
 
 static void d2sc_nfrt_usage(const char *progname);
 
-static void d2sc_nfrt_handle_signal(int sig);
+//static void d2sc_nfrt_handle_signal(int sig);
 
 static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name);
 
@@ -461,7 +462,6 @@ int d2sc_nfrt_ret_pkt(struct rte_mbuf *pkt, struct d2sc_nf_info *info) {
 	else nfs[info->inst_id].stats.tx_ret++;
 	return 0;
 }
-
 
 struct d2sc_sc *d2sc_nfrt_get_default_sc(void) {
 	return default_sc;

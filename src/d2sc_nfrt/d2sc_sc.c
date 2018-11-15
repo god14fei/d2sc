@@ -11,12 +11,15 @@
  *
 ********************************************************************/
 
+#include <rte_common.h>
+#include <rte_memory.h>
+#include <debug.h>
+#include <rte_malloc.h>
 
 #include <errno.h>
 #include <inttypes.h>
 #include "d2sc_common.h"
 #include "d2sc_sc.h"
-
 
 
 /*********************************Interfaces**********************************/

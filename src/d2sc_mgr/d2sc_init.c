@@ -232,7 +232,7 @@ int init(int argc, char *argv[]) {
 	*default_sc_p = default_sc;
 	d2sc_sc_print(default_sc);
 	
-	d2sc_fd_init();
+	d2sc_fs_init();
 	
 	return 0;
 }

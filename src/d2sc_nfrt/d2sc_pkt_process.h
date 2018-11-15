@@ -30,6 +30,9 @@
 #include "d2sc_mgr/d2sc_nf.h"
 #inlcude "d2sc_mgr/d2sc_mgr.h"
 
+extern struct port_info *ports;
+extern struct d2sc_sc *default_sc;
+
 /*********************************Interfaces**********************************/
 
 /*

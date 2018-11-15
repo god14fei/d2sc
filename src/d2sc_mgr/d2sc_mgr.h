@@ -42,9 +42,9 @@
 #include "d2sc_mgr/d2sc_init.h"
 #include "d2sc_includes.h"
 #include "d2sc_sc.h"
-#include "d2sc_ft.h"
-#include "d2sc_fd.h"
-#include "d2sc_pkt_common.h"
+#include "d2sc_flow_table.h"
+#include "d2sc_flow_steer.h"
+#include "d2sc_pkt_process.h"
 
 
 /***********************************Macros************************************/

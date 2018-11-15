@@ -55,7 +55,7 @@ void d2sc_pkt_process_rx_batch(struct buf_queue *mgr_bq, struct rte_mbuf *rx_pkt
 		meta = (struct d2sc_pkt_meta *) &(rx_pkts[i]->udata64);
 		meta->src = 0;
 		meta->sc_index = 0;
-		ret = d2sc_flow_steer_get_entry(rx_pkts[i], &entry);
+		ret = d2sc_fs_get_entry(rx_pkts[i], &entry);
 		if (ret >= 0) {		// Store the flow table lookup result in packet meta
 			sc = entry->sc;
 			meta->act = d2sc_sc_next_act(sc, rx_pkts[i]);
@@ -255,7 +255,7 @@ void d2sc_pkt_process_next_act(struct buf_queue *mgr_bq, struct rte_mbuf *pkt, s
 		return;
 		
 	meta = d2sc_get_pkt_meta(pkt);
-	ret = d2sc_flow_steer_get_entry(pkt, &entry);
+	ret = d2sc_fs_get_entry(pkt, &entry);
 	if (ret >= 0) {
 		sc = entry->sc;
 		meta->act = d2sc_sc_next_act(sc, pkt);

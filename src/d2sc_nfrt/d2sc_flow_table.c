@@ -12,8 +12,8 @@
 ********************************************************************/
 
 /******************************************************************************
-                               d2sc_ft.h
-                        A generic flow table
+                             d2sc_flow_table.h
+                        		A generic flow table
  *
  *****************************************************************************/
 
@@ -42,7 +42,7 @@ uint8_t rss_symmetric_key[40] = {
  * data array for storing values. */
 struct d2sc_ft *d2sc_ft_create(int cnt, int entry_size) {
 	struct rte_hash *hash;
-	struct d2sc_ft *ft;
+	struct d2sc_ft *table;
 	struct rte_hash_parameters ipv4_hash_params = {
 		.name = NULL;
 		.entries = cnt,
@@ -53,28 +53,44 @@ struct d2sc_ft *d2sc_ft_create(int cnt, int entry_size) {
 	
 	char s[64];
 	
-	/* Create ipv4 hash table */
+	/* Create ipv4 hash table, use core number and cycle counter to get a unique name. */
 	ipv4_hash_params.name = s;
 	ipv4_hash_params.socket_id = rte_socket_id();
-	snprintf(s, sizeof(s), "d2sc_ft_hash_%d", rte_lcore_id());
+	snprintf(s, sizeof(s), "d2sc_ft_hash_%d-%"PRIu64, rte_lcore_id(), rte_get_tsc_cycles());
 	hash = rte_hash_create(&ipv4_hash_params);
 	if (hash = NULL)
 		return NULL;
 	
-	ft = (struct d2sc_ft *)rte_calloc("flow_table", 1, sizeof(struct d2sc_ft), 0);
-	if (ft == NULL) {
+	table = (struct d2sc_ft *)rte_calloc("flow_table", 1, sizeof(struct d2sc_ft), 0);
+	if (table == NULL) {
 		rte_hash_free(hash);
 		return NULL;
 	}
-	ft->hash = hash;
-	ft->cnt = cnt;
-	ft->entry_size = entry_size;
+	table->hash = hash;
+	table->cnt = cnt;
+	table->entry_size = entry_size;
 	
-	ft->data = rte_calloc("entry", cnt, entry_size, 0);
-	if (ft->data = NULL) {
+	table->data = rte_calloc("flow_entry", cnt, entry_size, 0);
+	if (table->data = NULL) {
 		rte_hash_free(hash);
-		rte_free(ft);
+		rte_free(table);
 		return NULL;
 	}
-	return ft;
+	return table;
+}
+
+int d2sc_ft_lookup_pkt(struct d2sc_ft *table, struct rte_mbuf *pkt, char **data) {
+	int32_t ft_index;
+	struct d2sc_ft_ipv4_5tuple key;
+	int ret;
+	
+	ret = d2sc_ft_fill_key(&key, pkt);
+	if (ret < 0) {
+		return ret;
+	}
+	ft_index = rte_hash_lookup_with_hash(table->hash, (const char *)&key, pkt->hash.rss);
+	if (ft_index >= 0) {
+		*data = d2sc_ft_get_data(table, ft_index);
+	}
+	return ft_index;
 }

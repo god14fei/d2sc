@@ -23,6 +23,9 @@
 int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name);
 
 
+int d2sc_nfrt_scale_init(const char *nf_name);
+
+
 int d2sc_nfrt_run_callback(struct d2sc_nf_info *info, struct buf_queue *bq, 
 	int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *act), int(*callback_handler(void));
 

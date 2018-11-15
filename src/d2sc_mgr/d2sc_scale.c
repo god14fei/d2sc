@@ -11,10 +11,21 @@
  *
 ********************************************************************/
 
+#include "d2sc_mgr.h"
+#include "d2sc_scale.h"
 
 /*********************NF overload signal************************************/
 
 static uint8_t ol_signal = 0;
+
+
+/************************Internal functions prototypes************************/
+
+inline static int d2sc_scale_get_info(uint16_t *ids);
+
+inline static uint32_t d2sc_scale_get_queue_size(uint16_t nf_id);
+
+inline static int d2sc_scale_send_msg(uint8_t scale_sig, void *scale_data);
 
 
 /****************************Interfaces***************************************/
