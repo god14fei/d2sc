@@ -28,10 +28,10 @@
 /**********************Internal Functions Prototypes**************************/
 
 
-void d2sc_pkt_process_next_act(struct buf_queue *mgr_bq, struct rte_mbuf *pkt, struct d2sc_nf *nf);
+static inline void d2sc_pkt_process_next_act(struct buf_queue *mgr_bq, struct rte_mbuf *pkt, struct d2sc_nf *nf);
 
 
-void d2sc_pkt_enqueue_port(struct buf_queue *mgr_bq, uint16_t portid, struct rte_mbuf *pkt);
+static inline void d2sc_pkt_enqueue_port(struct buf_queue *mgr_bq, uint16_t portid, struct rte_mbuf *pkt);
 
 
 static int d2sc_pkt_drop(struct rte_mbuf *pkt);
@@ -245,7 +245,7 @@ void d2sc_pkt_enqueue_tx_ring(struct pkt_buf *nf_buf, uint16_t nf_id) {
 /****************************Internal functions*******************************/
 
 
-void d2sc_pkt_process_next_act(struct buf_queue *mgr_bq, struct rte_mbuf *pkt, struct d2sc_nf *nf) {
+static inline void d2sc_pkt_process_next_act(struct buf_queue *mgr_bq, struct rte_mbuf *pkt, struct d2sc_nf *nf) {
 	struct d2sc_flow_entry *entry;
 	struct d2sc_sc *sc;
 	struct d2sc_pkt_meta *meta;
@@ -284,7 +284,7 @@ void d2sc_pkt_process_next_act(struct buf_queue *mgr_bq, struct rte_mbuf *pkt, s
 }
 
 
-void d2sc_pkt_enqueue_port(struct buf_queue *mgr_bq, uint16_t portid, struct rte_mbuf *pkt) {
+static inline void d2sc_pkt_enqueue_port(struct buf_queue *mgr_bq, uint16_t portid, struct rte_mbuf *pkt) {
 	struct pkt_buf *port_buf;
 	
 	if (mgr_bq == NULL || pkt == NULL)

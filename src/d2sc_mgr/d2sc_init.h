@@ -42,8 +42,8 @@
 #include "d2sc_includes.h"
 #include "d2sc_common.h"
 
-#include "d2sc_ft.h"
-#include "d2sc_fd.h"
+#include "d2sc_flow_table.h"
+#include "d2sc_flow_steer.h"
 
 /***********************************Macros************************************/
 
