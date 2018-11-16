@@ -178,7 +178,7 @@ static void d2sc_stats_display_nfs(unsigned stime) {
 		rx_drop_last[i] = rx_drop;
 		tx_drop_last[i] = tx_drop;
 		
-		nfs[i].pkt_rate = rx_pps;	// Reserve the instantaneous packet rate in order to compute the load	 
+		nfs[i].pkt_rate = rx_pps / 1000000;	// Reserve the instantaneous packet rate (Mpps) in order to compute the load	 
 	}
 	
 	fprintf(stats_out, "\n");

@@ -57,6 +57,11 @@ inline static int d2sc_nf_ready(struct d2sc_nf_info *nf_info);
  */
 inline static int d2sc_nf_stop(struct d2sc_nf_info *nf_info);
 
+/*
+ * Function to deliver NF service time information
+ */
+inline static int d2sc_nf_srv_time(d2sc_nf_info *nf_info);
+
 
 /********************************Interfaces***********************************/
 
@@ -103,6 +108,9 @@ void d2sc_nf_check_status(void) {
 			case MSG_NF_STOPPING:
 				if (!d2sc_nf_stop(nf_info))
 					num_nfs--;
+				break;
+			case MSG_NF_SRV_TIME:
+				d2sc_nf_srv_time(nf_info);
 				break;
 		}
 		
@@ -226,4 +234,16 @@ inline static int d2sc_nf_stop(struct d2sc_nf_info *nf_info) {
 	rte_mempool_put(nf_info_mp, (void *)nf_info);
 	
 	return 0;
+}
+
+inline static int d2sc_nf_srv_time(d2sc_nf_info *nf_info) {
+	uint16_t nf_id;
+	
+	/* Ensure this NF is running normally */
+	if (nf_info->status != NF_RUNNING) return -1;
+	
+	nf_id = nf_info->inst_id;
+	/* Deliver the nf info with srv time to global nfs */
+	nfs[nf_id].nf_info = nf_info;		
+	return 0;	
 }

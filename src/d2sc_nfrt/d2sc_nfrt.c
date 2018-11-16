@@ -12,15 +12,15 @@
 ********************************************************************/
 
 
-/***************************Standard C library********************************/
+/************************Standard C and DPDK library**************************/
 
 
 #include <getopt.h>
 #include <signal.h>
 
+#include <rte_cycles.h>
 
 /*****************************Internal headers********************************/
-
 
 #include "d2sc_nfrt.h"
 #include "d2sc_includes.h"
@@ -108,6 +108,8 @@ d2sc_nfrt_dequeue_pkts(void **pkts, struct d2sc_nf_info *info, pkt_handler handl
 
 static inline void 
 d2sc_nfrt_dequeue_new_msgs(rte_ring *msg_ring);
+
+static inline int d2sc_nfrt_nf_srv_time(struct d2sc_nf_info *info);
 
 
 /************************************API**************************************/
@@ -327,6 +329,9 @@ callback_hander callback) {
 	int ret;
 	uint16_t nb_pkts;
 	
+	static uint64_t last_cycle;
+	static uint64_t cur_cycles;
+	
 	printf("\n NF process %d handling packets\n", info->inst_id);
 	
 	/* Listen for ^C and docker stop so we can exit gracefully */
@@ -338,6 +343,7 @@ callback_hander callback) {
 	if (ret != 0) rte_exit(EXIT_FAILURE, "Unable to send ready message to manager\n");
 		
 	printf("[Press Ctrl-C to quit ...]\n");
+	last_cycle = rte_get_tsc_cycles();
 	for (; keep_running; ) {
 		nb_pkts = d2sc_nfrt_dequeue_pkts((void **)pkts, info, handler);
 		
@@ -353,7 +359,16 @@ callback_hander callback) {
 		
 		if (callback != D2SC_NO_CALLBACK) {
 			keep_running = !(*callback)() && keep_running;
-		}		
+		}
+		cur_cycles = rte_get_tsc_cycles();
+		info->srv_time = (cur_cycles - last_cycle) / rte_get_timer_hz();
+		last_cycle = cur_cycles;
+		
+		/* Send nf srv_time msg to manager */
+		ret = d2sc_nfrt_nf_srv_time(info);
+		if (ret != 0) {
+			rte_exit(EXIT_FAILURE, "Unable to send nf service time msg to manager\n");
+		}
 	}
 	
 	// Stop and free
@@ -534,6 +549,7 @@ static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name) {
 	info->inst_id = init_inst_id;
 	info->type_id = type_id;
 	info->status = NF_WAITING_FOR_ID;
+	info->max_load = MAX_LOAD;
 	info->name = name;
 	return info;
 }
@@ -591,5 +607,22 @@ d2sc_nfrt_dequeue_new_msgs(rte_ring *msg_ring) {
 	rte_ring_dequeue(msg_ring, (void **)(&msg));
 	d2sc_nfrt_handle_new_msg(msg);
 	rte_mempool_put(nf_msg_mp, (void *)msg);
+}
+
+static inline int d2sc_nfrt_nf_srv_time(struct d2sc_nf_info *info) {
+	struct d2sc_nf_msg *srv_time_msg;
+	int ret;
+	
+	ret = rte_mempool_get(nf_msg_mp, (void **)(&srv_time_msg));
+	if (ret != 0) return ret;
+	
+	srv_time_msg->msg_type = MSG_NF_SRV_TIME;
+	srv_time_msg->msg_data = info;
+	ret = rte_ring_enqueue(new_msg_ring, srv_time_msg);
+	if (ret < 0) {
+		rte_mempool_put(nf_msg_mp, srv_time_msg);
+		return ret;
+	}
+	return 0;
 }
 

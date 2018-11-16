@@ -28,6 +28,7 @@
 #define MSG_NF_SARTING 3
 #define MSG_NF_STOPPING 4
 #define MSG_NF_READY 5
+#define MSG_NF_SRV_TIME 6		// Send the NF service time info to the Manager
 
 #define MGR_MSG_Q_NAME "mgr_msg_q"		// Mgr msg queue name
 #define MGR_SCALE_Q_NAME "mgr_scale_q"	// Mgr scale queue name
