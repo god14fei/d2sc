@@ -352,13 +352,13 @@ static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask) {
 			if (print_flag == 1) {
 				if(link.link_status)
 					printf("Port %d Link Up - speed %u "
-      					"Mbps - %s\n", port->id[portid],
+      					"Mbps - %s\n", ports->id[portid],
       					(unsigned)link.link_speed,
 								(link.link_duplex == ETH_LINK_FULL_DUPLEX) ? 
 								("full-duplex") : ("half-duplex"));
 				else
 					printf("Port %d Link Down\n",
-								(uint8_t)port->id[portid]);
+								(uint8_t)ports->id[portid]);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */

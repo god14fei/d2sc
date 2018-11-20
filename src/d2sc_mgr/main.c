@@ -130,9 +130,13 @@ static void scale_thread_main() {
 	
 	for (; work_keep_running && sleep(scale_iter) <= scale_iter;) {
 		d2sc_scale_check_overload();
-		d2sc_scale_ol_signal();
-		if (ol_signal == 1) {
-			d2sc_scale_execute();
+		d2sc_scale_up_signal();
+		if (up_signal == 1) {
+			d2sc_scale_up_execute();
+		}
+		d2sc_scale_block_signal();
+		if (block_signal == 1) {
+			d2sc_scale_block_execute();
 		}
 	}
 }
@@ -214,7 +218,7 @@ int main(int argc, char *argv[]) {
 	/* Reserve n cores for: 1 stats, 1 final TX out, 1 scaling, and num_tx_threads for RX */
 	cur_lcore = rte_lcore_id();
 	rx_lcores = num_tx_threads;
-	tx_lcores = rte_lcore_count() - rx_lcores - 1;
+	tx_lcores = rte_lcore_count() - rx_lcores - 2;
 	
 	/* Offset cur_lcore to start assigning TX cores */
 	cur_lcore += (rx_lcores - 1);
@@ -238,21 +242,6 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, handle_signal);
 	signal(SIGTERM, handle_signal);
 	
-	/* Launch RX thread main function for each RX queue on cores */
-	for (i = 0; i < rx_lcores; i++) {
-		struct buf_queue *mgr_bq = calloc(1, sizeof(struct buf_queue));
-		mgr_bq->id = i;
-		mgr_bq->mgr_nf = 1;
-		mgr_bq->tx_thread = NULL;
-		mgr_bq->rx_bufs = calloc(MAX_NFS, sizeof(struct pkt_buf));
-		cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
-		if (rte_eal_remote_launch(rx_thread_main, (void *)mgr_bq, cur_lcore) == -EBUSY) {
-			RTE_LOG(ERR, MGR, "Core %d is already busy, cannot use for RX queue id %d\n", 
-					cur_lcore, mgr_bq->id);
-			return -1;
-		}
-	}
-	
 	for (i = 0; i < tx_lcores; i++) {
 		struct buf_queue *mgr_bq = calloc(1, sizeof(struct buf_queue));
 		mgr_bq->id = i;
@@ -270,12 +259,29 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
-	/* Master thread handles statistics and NF management */
-	master_thread_main();
+	/* Launch RX thread main function for each RX queue on cores */
+	for (i = 0; i < rx_lcores; i++) {
+		struct buf_queue *mgr_bq = calloc(1, sizeof(struct buf_queue));
+		mgr_bq->id = i;
+		mgr_bq->mgr_nf = 1;
+		mgr_bq->tx_thread = NULL;
+		mgr_bq->rx_bufs = calloc(MAX_NFS, sizeof(struct pkt_buf));
+		cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
+		if (rte_eal_remote_launch(rx_thread_main, (void *)mgr_bq, cur_lcore) == -EBUSY) {
+			RTE_LOG(ERR, MGR, "Core %d is already busy, cannot use for RX queue id %d\n", 
+					cur_lcore, mgr_bq->id);
+			return -1;
+		}
+	}
 	
 	cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
+	if (rte_eal_remote_launch(scale_thread_main, NULL, cur_lcore) == -EBUSY) {
+		RTE_LOG(ERR, MGR, "Core %d is already busy, cannot use for NF scaling", cur_lcore);
+		return -1;
+	}
 	
-	scale_thread_main();
+	/* Master thread handles statistics and NF management */
+	master_thread_main();
 		
 	return 0;	
 }

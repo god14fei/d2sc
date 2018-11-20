@@ -29,6 +29,13 @@
 #include <rte_memcpy.h>
 
 
+struct ether_hdr* d2sc_pkt_ether_hdr(struct rte_mbuf* pkt) {
+	if (unlikely(pkt == NULL)) {
+		return NULL;
+	}
+	return rte_pktmbuf_mtod(pkt, struct ether_hdr *);
+}
+
 struct ipv4_hdr *d2sc_pkt_ipv4_hdr(struct rte_mbuf *pkt) {
 	struct ipv4_hdr *ipv4 = (struct ipv4_hdr *)(rte_pktmbuf_mtod(pkt, uint8_t *) + sizeof(struct ether_hdr));
 	
@@ -171,3 +178,76 @@ void d2sc_pkt_print_udp(struct udp_hdr* hdr) {
 	printf("Checksum: %" PRIu16 "\n", hdr->dgram_cksum);
 }
 
+int d2sc_pkt_set_mac_addr(struct rte_mbuf* pkt, unsigned src_port_id, unsigned dst_port_id, struct port_info *ports) {
+	struct ether_hdr *eth;
+
+	if (unlikely(pkt == NULL)) { // We do not expect to swap macs for empty packets
+		return -1;
+	}
+
+	/*
+	 * Get the ethernet header from the pkt
+	 */
+	eth = d2sc_pkt_ether_hdr(pkt);
+
+	/*
+	 * Get the MAC addresses of the src and destination NIC ports,
+	 * and set the ethernet header's fields to them.
+	 */
+	ether_addr_copy(&ports->mac[src_port_id], &eth->s_addr);
+	ether_addr_copy(&ports->mac[dst_port_id], &eth->d_addr);
+
+	return 0;
+}
+
+int d2sc_pkt_swap_src_mac_addr(struct rte_mbuf* pkt, unsigned dst_port_id, struct port_info *ports) {
+	struct ether_hdr *eth;
+
+	if (unlikely(pkt == NULL)) { // We do not expect to swap macs for empty packets
+		return -1;
+	}
+
+	/*
+	 * Get the ethernet header from the pkt
+	 */
+	eth = d2sc_pkt_ether_hdr(pkt);
+
+	/*
+	 * Copy the source mac address to the destination field.
+	 */
+	ether_addr_copy(&eth->s_addr, &eth->d_addr);
+
+	/*
+	 * Get the mac address of the specified destination port id
+	 * and set the source field to it.
+	 */
+	ether_addr_copy(&ports->mac[dst_port_id], &eth->s_addr);
+
+	return 0;
+}
+
+int d2sc_pkt_swap_dst_mac_addr(struct rte_mbuf* pkt, unsigned src_port_id, struct port_info *ports) {
+	struct ether_hdr *eth;
+
+	if (unlikely(pkt == NULL)) { // We do not expect to swap macs for empty packets
+		return -1;
+	}
+
+	/*
+	 * Get the ethernet header from the pkt
+	 */
+	eth = d2sc_pkt_ether_hdr(pkt);
+
+	/*
+	 * Copy the destination mac address to the source field.
+	 */
+	ether_addr_copy(&eth->d_addr, &eth->s_addr);
+
+	/*
+	 * Get the mac address of specified source port id
+	 * and set the destination field to it.
+	 */
+	ether_addr_copy(&ports->mac[src_port_id], &eth->d_addr);
+
+	return 0;
+}

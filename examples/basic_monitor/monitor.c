@@ -52,6 +52,7 @@ extern struct port_info *ports;
 
 // True as long as the NF should keep processing packets
 static uint8_t keep_running = 1;
+static uint8_t scaler_keep_running = 1;
 
 /*
  * Print a usage message
@@ -159,7 +160,7 @@ static void d2sc_handle_signal(int sig)
 		keep_running = 0;
 }
 
-static void initial_nf_thread(void) {
+static void master_nf_thread(void) {
 	RTE_LOG(INFO, NF, "Core %d: Runnning inital NF thread\n", rte_lcore_id());
 	
 	cur_cycles = rte_get_tsc_cycles();
@@ -167,15 +168,18 @@ static void initial_nf_thread(void) {
 	
 	d2sc_nfrt_run_callback(nf_info, nf_bq, &packet_handler, &callback_handler);
 	
+	// Stop the scaling thread
+	scaler_keep_running = 0;
+	
 	printf("If we reach here, inital NF is ending\n");
 }
 
 static void scaled_nf_thread(void) {
 	RTE_LOG(INFO, NF, "Core %d: Runnning scaled NF thread\n", rte_lcore_id());
 	
-	while (keep_running) {
-		// Check whether this NF needs to scale
-		if (d2sc_nfrt_check_scale_msg(nf_info) == SCALE_YES) {
+	while (scaler_keep_running) {
+		// Keep checking whether this NF needs to scale
+		if (d2sc_nfrt_check_scale_msg(nf_info) == SCALE_UP) {
 			RTE_LOG(INFO, NF, "Scaling message checked, start to perform scaling for NF %u\n", nf_info->inst_id);
 			
 			d2sc_nfrt_scale_init(NF_NAME);
@@ -214,11 +218,13 @@ int main(int argc, char *argv[]) {
 		rte_exit(EXIT_FAILURE, "Invalid commanline arguments\n");
 	}
 	
-	initial_nf_thread();
-	
 	cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
+	if (rte_eal_remote_launch(scaled_nf_thread, NULL, cur_lcore) == -EBUSY) {
+		RTE_LOG(ERR, MGR, "Core %d is already busy, cannot use for NF scaled thread", cur_lcore);
+		return -1;
+	}
 	
-	scaled_nf_thread();
+	master_nf_thread();
 	
 	return 0;
 }

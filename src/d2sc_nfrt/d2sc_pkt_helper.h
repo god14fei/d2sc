@@ -56,14 +56,15 @@ struct ipv4_hdr;
 		(tcp)->data_off |= ((flags) >> 8) & 0x1; \
 	} while (0)
 	
-	
-int d2sc_pkt_is_ipv4(struct rte_mbuf *pkt);
+struct ether_hdr* d2sc_pkt_ether_hdr(struct rte_mbuf* pkt);
 
 struct ipv4_hdr * d2sc_pkt_ipv4_hdr(struct rte_mbuf *pkt);
 
 struct tcp_hdr *d2sc_pkt_tcp_hdr(struct rte_mbuf *pkt);
 
 struct udp_hdr *d2sc_pkt_udp_hdr(struct rte_mbuf *pkt);
+
+int d2sc_pkt_is_ipv4(struct rte_mbuf *pkt);
 
 int d2sc_pkt_is_tcp(struct rte_mbuf *pkt);
 
@@ -76,6 +77,12 @@ void d2sc_pkt_print_ipv4(struct ipv4_hdr* hdr);
 void d2sc_pkt_print_tcp(struct tcp_hdr* hdr);
 
 void d2sc_pkt_print_udp(struct udp_hdr* hdr);
+
+int d2sc_pkt_set_mac_addr(struct rte_mbuf* pkt, unsigned src_port_id, unsigned dst_port_id, struct port_info *ports);
+
+int d2sc_pkt_swap_src_mac_addr(struct rte_mbuf* pkt, unsigned dst_port_id, struct port_info *ports);
+
+int d2sc_pkt_swap_dst_mac_addr(struct rte_mbuf* pkt, unsigned src_port_id, struct port_info *ports);
 
 
 #endif //	_D2SC_PKT_HELPER_H_

@@ -87,6 +87,9 @@ static uint16_t type_id = -1;
 // True as long as the NF should keep processing packets
 extern static uint8_t keep_running = 1;
 
+// True as long as the NF is not blocked
+static uint8_t non_blocking = 1;
+
 // Shared data for default service chain
 struct d2sc_sc *default_sc;
 
@@ -332,7 +335,7 @@ callback_hander callback) {
 	static uint64_t last_cycle;
 	static uint64_t cur_cycles;
 	
-	printf("\n NF process %d handling packets\n", info->inst_id);
+	printf("\n NF %d handling packets\n", info->inst_id);
 	
 	/* Listen for ^C and docker stop so we can exit gracefully */
 //	signal(SIGINT, d2sc_nfrt_handle_signal);
@@ -344,7 +347,7 @@ callback_hander callback) {
 		
 	printf("[Press Ctrl-C to quit ...]\n");
 	last_cycle = rte_get_tsc_cycles();
-	for (; keep_running; ) {
+	for (; keep_running && non_blocking; ) {
 		nb_pkts = d2sc_nfrt_dequeue_pkts((void **)pkts, info, handler);
 		
 		if (likely(nb_pkts > 0)) {
@@ -371,9 +374,10 @@ callback_hander callback) {
 		}
 	}
 	
-	// Stop and free
-	d2sc_nfrt_stop(info);
-	
+	if (keep_running == 0) {
+		// Stop and free
+		d2sc_nfrt_stop(info);
+	}
 	return 0;
 }
 
@@ -428,12 +432,26 @@ uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 		msg = (struct d2sc_scale_msg *)msgs[i];
 		scale_info = (struct d2sc_scale_info *)msg->scale_data;
 		
-		if (scale_info->type_id == nf_info->type_id && msg->scale_sig == SCALE_YES) {
-			scale_sig = SCALE_YES;
+		switch (msg->scale_sig) {
+			case SCALE_UP:
+				if (scale_info->type_id == nf_info->type_id) {
+					scale_sig = SCALE_UP;
+				}
+				break;
+			case SCALE_BLOCK:
+				if (scale_info->inst_id == nf_info->inst_id) {
+					scale_sig = SCALE_BLCOK;
+					non_blocking = 0;
+					d2sc_nfrt_block(nf_info);
+				}
+				break;
+			case SCALE_NO:
+			default:
+				break;		
 		}
+		
 		rte_mempool_put(nf_msg_mp, (void *)msg);
 	}
-	
 	return scale_sig;
 }
 
@@ -443,13 +461,13 @@ void d2sc_nfrt_stop(struct d2sc_nf_info *info) {
 	info->status = NF_STOPPED;
 	
 	/* Put this NF's info struct back into the queue for manager to ack stop */
-	if (new_msg_queue == NULL) {
+	if (new_msg_ring == NULL) {
 		rte_mempool_put(nf_info_mp, info);	//give back memory
 		rte_exit(EXIT_FAILURE, "Cannot get nf_info ring for stopping");
 	}
 	if (rte_mempool_get(nf_msg_mp, (void **)(&stop_msg)) != 0) {
 		rte_mempool_put(nf_info_mp, info);
-		rte_exit(EXIT_FAILURE, "Cannot get create stop msg");
+		rte_exit(EXIT_FAILURE, "Cannot create stop msg");
 	}
 	
 	stop_msg->msg_type = MSG_NF_STOPPING;
@@ -460,6 +478,31 @@ void d2sc_nfrt_stop(struct d2sc_nf_info *info) {
 		rte_mempool_put(nf_msg_mp, stop_msg);
 		rte_exit(EXIT_FAILURE, "Cannot send nf_info to manager for stopping");
 	}
+}
+
+
+void d2sc_nfrt_block(struct d2sc_nf_info *info) {
+	struct d2sc_nf_msg block_msg;
+	info->status = NF_BLOCKED;
+	
+	if (new_msg_ring == NULL) {
+		rte_mempool_put(nf_info_mp, info);
+		rte_exit(EXIT_FAILURE, "Cannot get nf_info ring for stopping");
+	}
+	if (rte_mempool_get(nf_msg_mp, (void **)(&block_msg)) != 0) {
+		rte_mempool_put(nf_info_mp, info);
+		rte_exit(EXIT_FAILURE, "Cannot create block msg");
+	}
+	
+	block_msg->msg_type = MSG_NF_BLOCKING;
+	block_msg->msg_data = info;
+	
+	if (rte_ring_enqueue(new_msg_ring, block_msg) < 0) {
+		rte_mempool_put(nf_info_mp, info);
+		rte_mempool_put(nf_msg_mp, block_msg);
+		rte_exit(EXIT_FAILURE, "Cannot send nf_info to the manager for blocking");
+	}
+		
 }
 
 
