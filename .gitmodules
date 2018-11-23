@@ -1,3 +1,1 @@
-[submodule "dpdk"]
-	path = dpdk
-	url = https://github.com/god14fei/dpdk
+
