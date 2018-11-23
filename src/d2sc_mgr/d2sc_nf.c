@@ -57,6 +57,9 @@ inline static int d2sc_nf_ready(struct d2sc_nf_info *nf_info);
  */
 inline static int d2sc_nf_stop(struct d2sc_nf_info *nf_info);
 
+
+inline static int d2sc_nf_block(d2sc_nf_info *nf_info);
+
 /*
  * Function to deliver NF service time information
  */

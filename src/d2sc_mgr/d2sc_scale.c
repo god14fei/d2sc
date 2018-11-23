@@ -161,7 +161,7 @@ void d2sc_scale_block_execute(void) {
 			scale_info = calloc(1, sizeof(struct d2sc_scale_info));
 			scale_info->inst_id = i;
 			scale_info->name = nfs[i].nf_info->name;
-			d2sc_scale_send(SCALE_BLOCK, (void *)scale_info)
+			d2sc_scale_send_msg(SCALE_BLOCK, (void *)scale_info)
 		}
 	}
 	

@@ -71,11 +71,10 @@ struct tx_thread {
 	struct pkt_buf *tx_bufs;
 };
 
-struct scaler_thread {
-	unsigned block_nfs[MAX_NFS];
-	uint16_t nfs_stime[MAX_NFS];
-	
-};
+//struct scaler_thread {
+//	unsigned block_nfs[MAX_NFS];
+//	unsigned ol_nfs[MAX_NFS];	
+//};
 
 /*
  * The buffer queue used by the manager
