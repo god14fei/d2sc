@@ -153,7 +153,7 @@ struct d2sc_nf {
 	uint16_t inst_id;
 
 	uint8_t ol_flag;			// NF overlaod flag
-	unit8_t bk_flag;		// NF block flag
+	uint8_t bk_flag;		// NF block flag
 	uint16_t pkt_rate;		// Packet arrival rate through the NF 
 	
 	volatile struct stats stats;

@@ -131,7 +131,7 @@ void d2sc_scale_block_signal(void) {
 
 
 void d2sc_scale_up_execute(uint16_t dst_type) {
-	uint16_t i
+	uint16_t i;
 	const char *name;
 	struct d2sc_scale_info *scale_info;
 	

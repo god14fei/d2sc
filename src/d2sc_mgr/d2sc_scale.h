@@ -14,9 +14,10 @@
 #ifndef _D2SC_SCALE_H_
 #define _D2SC_SCALE_H_
 
-#define SCALE_SLEEP_TIME 3
-#define SCALE_UP 2
-#define SCALE_BLOCK 1
+#define SCALE_SLEEP_TIME 4
+#define SCALE_UP 3
+#define SCALE_BLOCK 2
+#define SCALE_RUN 1
 #define SCALE_NO 0
 
 extern uint8_t up_signal;
