@@ -416,7 +416,8 @@ init_shm_rings(void) {
 		txq_name = get_tx_queue_name(i);
 		msgq_name = get_msg_queue_name(i);
 		nfs[i].inst_id = i;
-		nfs[i].ol_flag = 0;		// preset the ovload flat to 0, no overload
+		nfs[i].ol_flag = 0;		// preset the overload flag to 0, no overload
+		nfs[i].bk_flag = 0;		// preset the block flag to 0, non_block
 		nfs[i].pkt_rate = 0;	// initialize the pkt rate of all NFs
 		nfs[i].rx_q = rte_ring_create(rxq_name, ring_size,
 					socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */

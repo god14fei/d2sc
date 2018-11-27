@@ -347,37 +347,38 @@ callback_handler callback) {
 		
 	printf("[Press Ctrl-C to quit ...]\n");
 	last_cycle = rte_get_tsc_cycles();
-	for (; keep_running && non_blocking; ) {
-		nb_pkts = d2sc_nfrt_dequeue_pkts((void **)pkts, info, handler);
+	for (; keep_running; ) {
+		for (; non_blocking; ) {
+			nb_pkts = d2sc_nfrt_dequeue_pkts((void **)pkts, info, handler);
 		
-		if (likely(nb_pkts > 0)) {
-			d2sc_pkt_process_tx_batch(bq, pkts, nb_pkts, &nfs[info->inst_id]);
-		}
+			if (likely(nb_pkts > 0)) {
+				d2sc_pkt_process_tx_batch(bq, pkts, nb_pkts, &nfs[info->inst_id]);
+			}
 		
-		/* Flush the packet buffers */
-		d2sc_pkt_enqueue_tx_ring(bq->tx_buf, info->inst_id);
-		d2sc_pkt_fush_all_bqs(bq);
+			/* Flush the packet buffers */
+			d2sc_pkt_enqueue_tx_ring(bq->tx_buf, info->inst_id);
+			d2sc_pkt_fush_all_bqs(bq);
 		
-		d2sc_nfrt_dequeue_new_msgs(nfs[info->inst_id].msg_q);
+			d2sc_nfrt_dequeue_new_msgs(nfs[info->inst_id].msg_q);
 		
-		if (callback != D2SC_NO_CALLBACK) {
-			keep_running = !(*callback)() && keep_running;
-		}
-		cur_cycles = rte_get_tsc_cycles();
-		info->srv_time = (cur_cycles - last_cycle) / rte_get_timer_hz();
-		last_cycle = cur_cycles;
+			if (callback != D2SC_NO_CALLBACK) {
+				keep_running = !(*callback)() && keep_running;
+			}
+			cur_cycles = rte_get_tsc_cycles();
+			info->srv_time = (cur_cycles - last_cycle) / rte_get_timer_hz();
+			last_cycle = cur_cycles;
 		
-		/* Send nf srv_time msg to manager */
-		ret = d2sc_nfrt_nf_srv_time(info);
-		if (ret != 0) {
-			rte_exit(EXIT_FAILURE, "Unable to send nf service time msg to manager\n");
+			/* Send nf srv_time msg to manager */
+			ret = d2sc_nfrt_nf_srv_time(info);
+			if (ret != 0) {
+				rte_exit(EXIT_FAILURE, "Unable to send nf service time msg to manager\n");
+			}
 		}
 	}
 	
-	if (keep_running == 0) {
-		// Stop and free
-		d2sc_nfrt_stop(info);
-	}
+	// Stop and free
+	d2sc_nfrt_stop(info);
+	
 	return 0;
 }
 
@@ -406,6 +407,7 @@ int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg) {
 		case MSG_STOP:
 			RTE_LOG(INFO, NFRT, "Shutting down...\n");
 			keep_running = 0;
+			non_blocking = 0;
 			break;
 		case MSG_NOOP:
 		default:
@@ -442,7 +444,14 @@ uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 				if (scale_info->inst_id == nf_info->inst_id) {
 					scale_sig = SCALE_BLOCK;
 					non_blocking = 0;
-					d2sc_nfrt_block(nf_info);
+					d2sc_nfrt_scale_block(nf_info);
+				}
+				break;
+			case SCALE_RUN:
+				if (scale_info->inst_id == nf_info->inst_id) {
+					scale_sig = SCALE_RUN;
+					non_blocking = 1;
+					d2sc_nfrt_scale_run(nf_info);
 				}
 				break;
 			case SCALE_NO:
@@ -480,17 +489,17 @@ void d2sc_nfrt_stop(struct d2sc_nf_info *info) {
 	}
 }
 
-void d2sc_nfrt_block(struct d2sc_nf_info *info) {
+void d2sc_nfrt_scale_block(struct d2sc_nf_info *info) {
 	struct d2sc_nf_msg *block_msg;
 	info->status = NF_BLOCKED;
 	
 	if (new_msg_queue == NULL) {
 		rte_mempool_put(nf_info_mp, info);
-		rte_exit(EXIT_FAILURE, "Cannot get nf_info ring for stopping");
+		rte_exit(EXIT_FAILURE, "Cannot get nf_info ring for scale blocking");
 	}
 	if (rte_mempool_get(nf_msg_pool, (void **)(&block_msg)) != 0) {
 		rte_mempool_put(nf_info_mp, info);
-		rte_exit(EXIT_FAILURE, "Cannot create block msg");
+		rte_exit(EXIT_FAILURE, "Cannot create scale block msg");
 	}
 	
 	block_msg->msg_type = MSG_NF_BLOCKING;
@@ -499,7 +508,31 @@ void d2sc_nfrt_block(struct d2sc_nf_info *info) {
 	if (rte_ring_enqueue(new_msg_queue, block_msg) < 0) {
 		rte_mempool_put(nf_info_mp, info);
 		rte_mempool_put(nf_msg_pool, block_msg);
-		rte_exit(EXIT_FAILURE, "Cannot send nf_info to the manager for blocking");
+		rte_exit(EXIT_FAILURE, "Cannot send nf_info to the manager for scale blocking");
+	}
+		
+}
+
+void d2sc_nfrt_scale_run(struct d2sc_nf_info *info) {
+	struct d2sc_nf_msg *run_msg;
+	info->status = NF_RUNNING;
+	
+	if (new_msg_queue == NULL) {
+		rte_mempool_put(nf_info_mp, info);
+		rte_exit(EXIT_FAILURE, "Cannot get nf_info ring for scale running");
+	}
+	if (rte_mempool_get(nf_msg_pool, (void **)(&run_msg)) != 0) {
+		rte_mempool_put(nf_info_mp, info);
+		rte_exit(EXIT_FAILURE, "Cannot create scale run msg");
+	}
+	
+	run_msg->msg_type = MSG_NF_RUNNING;
+	run_msg->msg_data = info;
+	
+	if (rte_ring_enqueue(new_msg_queue, run_msg) < 0) {
+		rte_mempool_put(nf_info_mp, info);
+		rte_mempool_put(nf_msg_pool, run_msg);
+		rte_exit(EXIT_FAILURE, "Cannot send nf_info to the manager for scale running");
 	}
 		
 }

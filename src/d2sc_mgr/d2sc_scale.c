@@ -17,7 +17,6 @@
 /**********************NF scale up and block signal***************************/
 
 uint8_t up_signal = 0;
-uint8_t block_signal = 0;
 
 
 /************************Internal functions prototypes************************/
@@ -32,6 +31,19 @@ inline static int d2sc_scale_send_msg(uint8_t scale_sig, void *scale_data);
 
 
 /****************************Interfaces***************************************/
+void d2sc_scale_check_block(uint16_t dst_type) {
+	uint16_t i;
+	struct d2sc_scale_info *scale_info;
+	
+	for (i = 0; i < MAX_NFS; i++) {
+		if (nfs[i].nf_info->type_id == dst_type && nfs[i].bk_flag == 1){
+			scale_info = calloc(1, sizeof(struct d2sc_scale_info));
+			scale_info->type_id = dst_type;
+			scale_info->name = nfs[i].nf_info->name;
+			d2sc_scale_send_msg(SCALE_RUN, (void *)scale_info);
+		}
+	}
+}
 
 
 void d2sc_scale_check_overload(void) {
@@ -110,60 +122,43 @@ void d2sc_scale_block_signal(void) {
 		if (d2sc_scale_get_free_size(i) == NF_RING_SIZE - 1) {
 			// The NF queue keeps empty in 5 checks
 			if (++cnter == check_interval) {
-				block_signal = 1;
+				nfs[i].bk_flag = 1;
 				cnter = 0;
-				return;
 			}
 		}
 	}
-	block_signal = 0;
 }
 
 
-void d2sc_scale_up_execute(void) {
-	uint16_t i, j;
+void d2sc_scale_up_execute(uint16_t dst_type) {
+	uint16_t i
 	const char *name;
-	struct d2sc_scale_info *scale_info;
-	
-	for (i = 0; i < num_nts; i++) {
-		if (nfs_per_nt_num[i] == 0)
-			continue;
-		
-		/* no available nfs of type i */
-		if (nfs_per_nt_available[i] <=0) {
-			for (j = 0; j < MAX_NFS; j++) {
-				if (!d2sc_nf_is_valid(&nfs[j]))
-					continue;
-					
-				if (nfs[j].nf_info->type_id == i) {
-					name = nfs[j].nf_info->name;
-					break;
-				}		
-			}
-			scale_info = calloc(1, sizeof(struct d2sc_scale_info));
-			scale_info->type_id = i;
-			scale_info->name = name;
-			d2sc_scale_send_msg(SCALE_UP, (void *)scale_info);
-		}
-	}
-}
-
-void d2sc_scale_block_execute(void) {
-	uint16_t i;
 	struct d2sc_scale_info *scale_info;
 	
 	for (i = 0; i < MAX_NFS; i++) {
 		if (!d2sc_nf_is_valid(&nfs[i]))
 			continue;
 			
-		if (d2sc_scale_get_free_size(i) == NF_RING_SIZE - 1) {
-			scale_info = calloc(1, sizeof(struct d2sc_scale_info));
-			scale_info->inst_id = i;
-			scale_info->name = nfs[i].nf_info->name;
-			d2sc_scale_send_msg(SCALE_BLOCK, (void *)scale_info);
+		if (nfs[i].nf_info->type_id == dst_type) {
+			name = nfs[i].nf_info->name;
+			break;
 		}
 	}
 	
+	scale_info = calloc(1, sizeof(struct d2sc_scale_info));
+	scale_info->type_id = dst_type;
+	scale_info->name = name;
+	d2sc_scale_send_msg(SCALE_UP, (void *)scale_info);
+	
+}
+
+void d2sc_scale_block_execute(uint16_t dst_nf, uint8_t msg_type) {
+	struct d2sc_scale_info *scale_info;
+	
+	scale_info = calloc(1, sizeof(struct d2sc_scale_info));
+	scale_info->inst_id = dst_nf;
+	scale_info->name = nfs[dst_nf].nf_info->name;
+	d2sc_scale_send_msg(msg_type, (void *)scale_info);
 }
 
 /******************************Internal functions*****************************/

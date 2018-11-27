@@ -153,6 +153,7 @@ struct d2sc_nf {
 	uint16_t inst_id;
 
 	uint8_t ol_flag;			// NF overlaod flag
+	unit8_t bk_flag;		// NF block flag
 	uint16_t pkt_rate;		// Packet arrival rate through the NF 
 	
 	volatile struct stats stats;
@@ -191,7 +192,7 @@ struct d2sc_sc {
 #define NF_WAITTING_FOR_ID 0		// Begin in an startup process, and has no ID registered by manager yet
 #define NF_STARTING 1 					// In an startup process, and already has an ID
 #define NF_RUNNING 2						// Running normally
-#define NF_BLOCKED 3							// Not receiving packets temporarily, but may regain in the future
+#define NF_BLOCKED 3						// Not receiving packets temporarily, but may regain in the future
 #define NF_STOPPED 4						// Stopped in a shupdown process
 #define NF_ID_CONFLICT 5 				// ID is conflicted with an already used ID
 #define NF_NO_IDS	6							// There are no IDs for this NF

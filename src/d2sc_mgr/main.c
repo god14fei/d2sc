@@ -124,21 +124,51 @@ static int tx_thread_main(void *arg) {
  * Scale thread periodically monitor whether an NF type needs to perform scaling.
  */
 static int scale_thread_main(void *arg) {
+	uint16_t i;
 	const unsigned scale_iter = SCALE_SLEEP_TIME;
 	
 	RTE_LOG(INFO, MGR, "Core %d: Running scale thread\n", rte_lcore_id());
 	
 	for (; worker_keep_running && sleep(scale_iter) <= scale_iter;) {
+		for (i = 0; i < num_nts; i++) {
+			if (nfs_per_nt_num[i] == 0)
+				continue;
+				
+			if (nfs_per_nt_available[i] == 0) {
+				d2sc_scale_check_block(i);
+			}
+		}
+		
 		d2sc_scale_check_overload();
 		d2sc_scale_up_signal();
 		if (up_signal == 1) {
-			d2sc_scale_up_execute();
+			for (i = 0; i < num_nts; i++) {
+				if (nfs_per_nt_num[i] == 0)
+					continue;
+				
+				if (nfs_per_nt_available[i] ==0) {	
+					RTE_LOG(INFO, MGR, "Core %d: Notifying NF type %"PRIu16" to scale up\n", rte_lcore_id(), i);
+					d2sc_scale_up_execute(i);
+				}
+			}
 		}
+		
+		// Check the NF block signal
 		d2sc_scale_block_signal();
-		if (block_signal == 1) {
-			d2sc_scale_block_execute();
+		for (i = 0; i < MAX_NFS; i++) {
+			if (!d2sc_nf_is_valid(&nfs[i])) {
+				continue;
+			}
+			
+			if (nfs[i].bk_flag == 1) {
+				RTE_LOG(INFO, MGR, "Core %d: Notifying NF %"PRIu16" to scale block\n", rte_lcore_id(), i);
+				d2sc_scale_block_execute(i, SCALE_BLOCK);
+			}
 		}
 	}
+	
+	RTE_LOG(INFO, MGR, "Core %d: Scale thread done\n", rte_lcore_id());	
+		
 	return 0;
 }
 

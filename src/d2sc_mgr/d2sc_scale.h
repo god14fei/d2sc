@@ -36,15 +36,17 @@ struct d2sc_scale_msg {
 };
 
 
+void d2sc_scale_check_block(uint16_t dst_type);
+
 void d2sc_scale_check_overload(void);
 
 void d2sc_scale_up_signal(void);
 
-void d2sc_scale_up_execute(void);
+void d2sc_scale_up_execute(uint16_t dst_type);
 
 void d2sc_scale_block_signal(void);
 
-void d2sc_scale_block_execute(void);
+void d2sc_scale_block_execute(uint16_t dst_nf, uint8_t msg_type);
 
 
 #endif //	_D2SC_SCALE_H_

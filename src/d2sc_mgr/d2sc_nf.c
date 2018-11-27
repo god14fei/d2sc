@@ -111,6 +111,10 @@ void d2sc_nf_check_status(void) {
 				break;
 			case MSG_NF_BLOCKING:
 				d2sc_nf_block(nf_info);
+				break;
+			case MSG_NF_RUNNING:
+				d2sc_nf_run(nf_info);
+				break;
 			case MSG_NF_SRV_TIME:
 				d2sc_nf_srv_time(nf_info);
 				break;
@@ -249,6 +253,21 @@ inline static int d2sc_nf_block(struct d2sc_nf_info *nf_info) {
 	nt_id = nf_info->type_id;
 	// available NFs of this type minus 1
 	nfs_per_nt_available[nt_id]--;
+	nfs[nf_id].nf_info = nf_info;
+	return 0;
+}
+
+inline static int d2sc_nf_run(struct d2sc_nf_info *nf_info) {
+	uint16_t nf_id;
+	uint16_t nt_id;
+	
+	if (nf_info->status != NF_RUNNING) return -1;
+		
+	nf_id = nf_info->inst_id;
+	nt_id = nf_info->type_id;
+	
+	// available nfs of this type add 1
+	nfs_per_nt_available[nt_id]++;
 	nfs[nf_id].nf_info = nf_info;
 	return 0;
 }

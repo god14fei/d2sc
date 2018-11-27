@@ -48,7 +48,9 @@ uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info);
 
 void d2sc_nfrt_stop(struct d2sc_nf_info *info);
 
-void d2sc_nfrt_block(struct d2sc_nf_info *info);
+void d2sc_nfrt_scale_block(struct d2sc_nf_info *info);
+
+void d2sc_nfrt_scale_run(struct d2sc_nf_info *info);
 
 
 // struct rte_ring *d2sc_nfrt_get_tx_ring(struct d2sc_nf_info *info);
