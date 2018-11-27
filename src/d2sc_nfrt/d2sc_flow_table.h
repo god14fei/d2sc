@@ -70,7 +70,7 @@ int d2sc_ft_lookup_pkt(struct d2sc_ft *table, struct rte_mbuf *pkt, char **data)
 
 /*******************************Helper function*******************************/
 
-static inline int d2sc_ft_fill_key(struct d2sc_ft_ipv4_5tuple *key, rte_mbuf *pkt) {
+static inline int d2sc_ft_fill_key(struct d2sc_ft_ipv4_5tuple *key, struct rte_mbuf *pkt) {
 	struct ipv4_hdr *ipv4_hdr;
 	struct tcp_hdr *tcp_hdr;
 	struct udp_hdr *udp_hdr;
@@ -80,7 +80,7 @@ static inline int d2sc_ft_fill_key(struct d2sc_ft_ipv4_5tuple *key, rte_mbuf *pk
 	}
 	ipv4_hdr = d2sc_pkt_ipv4_hdr(pkt);
 	memset(key, 0, sizeof(struct d2sc_ft_ipv4_5tuple));
-	key->proto = ipv4_hdr->nex_proto_id;
+	key->proto = ipv4_hdr->next_proto_id;
 	key->src_addr = ipv4_hdr->src_addr;
 	key->dst_addr = ipv4_hdr->dst_addr;
 	if (key->proto == IP_PROTOCOL_TCP) {

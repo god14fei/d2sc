@@ -23,7 +23,7 @@
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 
-#include "d2sc_ft.h"
+#include "d2sc_flow_table.h"
 
 uint8_t rss_symmetric_key[40] = { 
 			0x6d, 0x5a, 0x6d, 0x5a,
@@ -44,7 +44,7 @@ struct d2sc_ft *d2sc_ft_create(int cnt, int entry_size) {
 	struct rte_hash *hash;
 	struct d2sc_ft *table;
 	struct rte_hash_parameters ipv4_hash_params = {
-		.name = NULL;
+		.name = NULL,
 		.entries = cnt,
 		.key_len = sizeof(struct d2sc_ft_ipv4_5tuple),
 		.hash_func = NULL,

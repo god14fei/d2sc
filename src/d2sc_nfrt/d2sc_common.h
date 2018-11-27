@@ -194,7 +194,7 @@ struct d2sc_sc {
 #define NF_BLOCKED 3							// Not receiving packets temporarily, but may regain in the future
 #define NF_STOPPED 4						// Stopped in a shupdown process
 #define NF_ID_CONFLICT 5 				// ID is conflicted with an already used ID
-#define NF_NO_IDS								// There are no IDs for this NF
+#define NF_NO_IDS	6							// There are no IDs for this NF
 
 #define NF_NO_ID -1
 #define D2SC_NF_HANDLE_TX 1			// True if NFs start to pass packets to each other
@@ -205,7 +205,7 @@ static inline struct d2sc_pkt_meta *d2sc_get_pkt_meta(struct rte_mbuf *pkt) {
 	return (struct d2sc_pkt_meta *)&pkt->udata64;
 }
 
-struct inline uint8_t d2sc_get_pkt_sc_index(struct rte_mbuf *pkt) {
+static inline uint8_t d2sc_get_pkt_sc_index(struct rte_mbuf *pkt) {
 	return ((struct d2sc_pkt_meta *)&pkt->udata64)->sc_index;
 }
 
@@ -236,6 +236,7 @@ static inline int d2sc_nf_is_valid(struct d2sc_nf *nf) {
 	return nf && nf->nf_info && nf->nf_info->status == NF_RUNNING;
 }
 
-#define RTE_LOGTYPE_APP RTE_LOGTYPE_USER
+#define RTE_LOGTYPE_MGR RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_NFRT RTE_LOGTYPE_USER1
 
 #endif // _D2SC_COMMON_H_

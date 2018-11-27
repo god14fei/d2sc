@@ -34,7 +34,7 @@ struct rte_mempool *nf_info_mp;
 struct rte_mempool *nf_msg_mp;
 uint16_t **nts;
 uint16_t *nfs_per_nt_num;
-uint16_t *nfs_pet_nt_available;		// Number of available NFs per NF type, i.e., not overloaded
+uint16_t *nfs_per_nt_available;		// Number of available NFs per NF type, i.e., not overloaded
 struct d2sc_sc *default_sc;
 struct d2sc_sc **default_sc_p;
 
@@ -52,6 +52,16 @@ static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask);
 
 
 /*****************Internal Configuration Structs and Constants*****************/
+
+/*
+ * RX and TX Prefetch, Host, and Write-back threshold values should be
+ * carefully set for optimal performance. Consult the network
+ * controller's datasheet and supporting DPDK documentation for guidance
+ * on how these parameters should be set.
+ */
+#define RX_PTHRESH 8 /* Default values of RX prefetch threshold reg. */
+#define RX_HTHRESH 8 /* Default values of RX host threshold reg. */
+#define RX_WTHRESH 4 /* Default values of RX write-back threshold reg. */
 
 /*
  * These default values are optimized for use with the Intel(R) 82599 10 GbE
@@ -129,7 +139,7 @@ int init(int argc, char *argv[]) {
 #endif
 	
 	/* get total number of ports */
-	n_ports = rte_eth_dev_count();
+	n_ports = rte_eth_dev_count_avail();
 	
 	/* set up memory zone for nfs */
 	mz_nf = rte_memzone_reserve(MZ_NF_INFO, sizeof(*nfs) * MAX_NFS, rte_socket_id(), NO_FLAGS);
@@ -250,7 +260,7 @@ static int init_mbuf_mps(void) {
 	
 	printf("Creating mbuf mempool '%s' [%u mbufs] ...\n", MP_PKTMBUF_NAME, n_mbufs);
 	pktmbuf_mp = rte_mempool_create(MP_PKTMBUF_NAME, n_mbufs, MBUF_SIZE, MBUF_CACHE_SIZE, 
-				sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_init, 
+				sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init, 
 				NULL, rte_pktmbuf_init, NULL, rte_socket_id(), NO_FLAGS);
 
 	return (pktmbuf_mp == NULL); /* 0 on success */
@@ -274,7 +284,7 @@ static int init_nf_info_mp(void) {
 static int init_nf_msg_mp(void) {
 	
 	printf("Creating mbuf pool '%s' ...\n", MP_NF_MSG_NAME);
-	nf_msg_mp = rte_mempool_create(MP_NF_MSG_NAME, MAX_NFS * NF_MSG_Q_SIZE, NF_MSG_SIZE, 
+	nf_msg_mp = rte_mempool_create(MP_NF_MSG_NAME, MAX_NFS * NF_MSG_RING_SIZE, NF_MSG_SIZE, 
 				NF_MSG_CACHE_SIZE, 0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
 							 
 	return (nf_msg_mp == NULL); /* 0 on success */
@@ -380,7 +390,7 @@ static void check_all_ports_link_status(uint8_t port_num, uint32_t port_mask) {
 		/* set the print_flag if all ports up or timeout */
 		if (all_ports_up == 1 || n == (MAX_CHECK_TIME - 1)) {
 			print_flag = 1;
-			print("done\n");
+			printf("done\n");
 		}
 	}
 }

@@ -28,7 +28,7 @@
 #include "d2sc_includes.h"
 #include "d2sc_flow_steer.h"
 #include "d2sc_mgr/d2sc_nf.h"
-#inlcude "d2sc_mgr/d2sc_mgr.h"
+#include "d2sc_mgr/d2sc_mgr.h"
 
 extern struct port_info *ports;
 extern struct d2sc_sc *default_sc;
@@ -62,7 +62,7 @@ void d2sc_pkt_enqueue_bq(struct buf_queue *mgr_bq, uint16_t dst_nt_id, struct rt
 void d2sc_pkt_process_tx_batch(struct buf_queue *mgr_bq, struct rte_mbuf *tx_pkts[], uint16_t nb_tx, struct d2sc_nf *nf);
 
 
-void d2sc_flush_all_bqs(struct buf_queue *mgr_bq);
+void d2sc_pkt_flush_all_bqs(struct buf_queue *mgr_bq);
 
 
 void d2sc_pkt_flush_nf_bq(struct pkt_buf *nf_buf, uint16_t nf_id);

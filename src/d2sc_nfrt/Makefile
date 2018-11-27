@@ -25,5 +25,8 @@ LIB = libd2sc.a
 SRCS-y := d2sc_pkt_process.c d2sc_sc.c d2sc_pkt_helper.c d2sc_flow_steer.c d2sc_flow_table.c d2sc_nfrt.c
 
 CFLGAS += -g
+CFLAGS += -I$(SRCDIR)/../ -I$(SRCDIR)/../d2sc_nfrt/
+
+# CFLAGS += $(WERROR_FLAGS) -O3 $(USER_FLAGS)
 
 include $(RTE_SDK)/mk/rte.extlib.mk

@@ -58,12 +58,12 @@ inline static int d2sc_nf_ready(struct d2sc_nf_info *nf_info);
 inline static int d2sc_nf_stop(struct d2sc_nf_info *nf_info);
 
 
-inline static int d2sc_nf_block(d2sc_nf_info *nf_info);
+inline static int d2sc_nf_block(struct d2sc_nf_info *nf_info);
 
 /*
  * Function to deliver NF service time information
  */
-inline static int d2sc_nf_srv_time(d2sc_nf_info *nf_info);
+inline static int d2sc_nf_srv_time(struct d2sc_nf_info *nf_info);
 
 
 /********************************Interfaces***********************************/
@@ -105,9 +105,6 @@ void d2sc_nf_check_status(void) {
 			case MSG_NF_READY:
 				d2sc_nf_ready(nf_info);
 				break;
-			case MSG_NF_SCALE:
-				d2sc_nf_scale(nf_info);
-				break;
 			case MSG_NF_STOPPING:
 				if (!d2sc_nf_stop(nf_info))
 					num_nfs--;
@@ -143,7 +140,7 @@ int d2sc_nf_send_msg(uint16_t dst, uint8_t msg_type, void *msg_data) {
 
 
 inline static int d2sc_nf_start(struct d2sc_nf_info *nf_info) {
-	if (nf_info == NULL || nf_info->status != NF_WAITING_FOR_ID)
+	if (nf_info == NULL || nf_info->status != NF_WAITTING_FOR_ID)
 		return 1;
 		
 	// if NF passed its own id on the command line, don't assign here
@@ -241,7 +238,7 @@ inline static int d2sc_nf_stop(struct d2sc_nf_info *nf_info) {
 	return 0;
 }
 
-inline static int d2sc_nf_block(d2sc_nf_info *nf_info) {
+inline static int d2sc_nf_block(struct d2sc_nf_info *nf_info) {
 	uint16_t nf_id;
 	uint16_t nt_id;
 	
@@ -256,7 +253,7 @@ inline static int d2sc_nf_block(d2sc_nf_info *nf_info) {
 	return 0;
 }
 
-inline static int d2sc_nf_srv_time(d2sc_nf_info *nf_info) {
+inline static int d2sc_nf_srv_time(struct d2sc_nf_info *nf_info) {
 	uint16_t nf_id;
 	
 	/* Ensure this NF is running normally */

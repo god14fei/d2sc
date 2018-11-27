@@ -128,7 +128,7 @@ static void d2sc_stats_display_ports(unsigned stime) {
 		tx_pps = (tx_pkts - tx_last[i]) / stime;
 		
 		fprintf(stats_out, "Port %u - rx: %9"PRIu64"  (%9"PRIu64" pps)\t"
-		"tx: %9"PRIu64"  (%9"PRIu64" pps)\n", (unsigned)port->id[i], rx_pkts, rx_pps, tx_pkts, tx_pps);
+		"tx: %9"PRIu64"  (%9"PRIu64" pps)\n", (unsigned)ports->id[i], rx_pkts, rx_pps, tx_pkts, tx_pps);
 		
 		rx_last[i] = rx_pkts;
 		tx_last[i] = tx_pkts;
@@ -170,8 +170,8 @@ static void d2sc_stats_display_nfs(unsigned stime) {
 		
 		fprintf(stats_out, "NF %2u - rx: %9"PRIu64" rx_drop: %9"PRIu64" next: %9"PRIu64" drop: %9"PRIu64" ret: %9"PRIu64"\n"
 			"	tx: %9"PRIu64" tx_drop: %9"PRIu64" out:  %9"PRIu64" tonf: %9"PRIu64" buf: %9"PRIu64" \n",
-			nfs[i].nf_info->inst_id, rx, rx_drop, act_next, act_drop, act_ret,
-			tx, tx_drop, act_out, act_tonf, act_buf);
+			nfs[i].nf_info->inst_id, rx, rx_drop, act_next, act_drop, tx_ret,
+			tx, tx_drop, act_out, act_tonf, tx_buf);
 			
 		rx_last[i] = rx;
 		tx_last[i] = tx;

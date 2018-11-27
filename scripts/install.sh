@@ -60,7 +60,7 @@ sudo -v
 cd $start_dir
 
 # Configure Hugepages only if user wants to
-if [ -z "D2SC_SKIP_HUGEPAGES" ]; then
+if [ -z "$D2SC_SKIP_HUGEPAGES" ]; then
 	hp_size=$(cat /proc/meminfo | grep Hugepagesize | awk '{print $2}')
 	hp_count="${D2SC_NUM_HUGEPAGES:-1024}"
 	echo "Configuring $hp_count hugepages with size $hp_size"
@@ -70,7 +70,7 @@ fi
 
 grep -m 1 "huge" /etc/fstab | cat
 # Only add to /etc/fstab if user wants it
-if [ ${PIPESTATUS[0]} != 0] && [ -z "$D2SC_SKIP_FSTAB" ]; then
+if [ ${PIPESTATUS[0]} != 0 ] && [ -z "$D2SC_SKIP_FSTAB" ]; then
 	echo "Adding huge fs to /etc/fstab"
 	sleep 1
 	sudo sh -c "echo \"huge /mnt/huge hugetabfs defaults 0 0\" >> /etc/fstab"

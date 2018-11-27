@@ -31,6 +31,7 @@
 #include "onvm_pkt_helper.h"
 
 #define NF_NAME "basic_monitor"
+//#define MAX_LOAD 500
 
 /* Struct that contains information about this NF */
 struct d2sc_nf_info *nf_info;
@@ -51,7 +52,7 @@ static uint64_t cur_cycles;
 extern struct port_info *ports;
 
 // True as long as the NF should keep processing packets
-static uint8_t keep_running = 1;
+uint8_t keep_running = 1;
 static uint8_t scaler_keep_running = 1;
 
 /*

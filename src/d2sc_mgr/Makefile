@@ -35,7 +35,7 @@ INC := d2sc_mgr.h d2sc_init.h d2sc_parse.h d2sc_stats.h d2sc_nf.h d2sc_scale.h
 
 CFLAGS += -g
 CFLAGS += -I$(SRCDIR)/../ -I$(SRCDIR)/../d2sc_nfrt/
-LDFLAGS += $(SRCDIR)../d2sc_nfrt/$(RTE_TARGET)/libd2sc.a
+LDFLAGS += $(SRCDIR)/../d2sc_nfrt/$(RTE_TARGET)/libd2sc.a
 
 # for newer gcc, e.g. 4.4, no-strict-aliasing may not be necessary
 # and so the next line can be removed in those cases.

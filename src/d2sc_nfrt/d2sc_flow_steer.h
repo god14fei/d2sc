@@ -34,7 +34,7 @@ struct d2sc_flow_entry {
 
 int d2sc_fs_init(void);
 
-int d2sc_fs_get_entry(rte_mbuf *pkt, struct d2sc_flow_entry **flow_entry);
+int d2sc_fs_get_entry(struct rte_mbuf *pkt, struct d2sc_flow_entry **flow_entry);
 
 
 

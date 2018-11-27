@@ -32,6 +32,7 @@
 
 
 #define D2SC_NO_CALLBACK NULL
+#define MAX_LOAD 500
 
 typedef int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *meta);
 typedef int(*callback_handler)(void);
@@ -43,10 +44,10 @@ typedef int(*callback_handler)(void);
 struct port_info *ports;
 
 // ring used for NFs Sending msg to the manager
-static struct rte_ring *new_msg_ring;
+static struct rte_ring *new_msg_queue;
 
 // ring sued for manager sending scale msg to nfs
-static struct rte_ring *scale_msg_ring;
+static struct rte_ring *scale_msg_queue;
 
 // rings used to pass pkts between NFRT and Manager
 //static struct rte_ring *tx_ring, *rx_ring;
@@ -76,7 +77,7 @@ extern struct d2sc_nf_info *scaled_nf_info;
 static struct rte_mempool *nf_info_mp;
 
 // Shared mempool for mgr <--> NF messages
-static struct rte_mempool *nf_msg_mp;
+static struct rte_mempool *nf_msg_pool;
 
 // User-given NF ID (if not given, default to manager assigned)
 static uint16_t init_inst_id = NF_NO_ID;
@@ -85,7 +86,7 @@ static uint16_t init_inst_id = NF_NO_ID;
 static uint16_t type_id = -1;
 
 // True as long as the NF should keep processing packets
-extern static uint8_t keep_running = 1;
+extern uint8_t keep_running;
 
 // True as long as the NF is not blocked
 static uint8_t non_blocking = 1;
@@ -110,7 +111,7 @@ static inline uint16_t
 d2sc_nfrt_dequeue_pkts(void **pkts, struct d2sc_nf_info *info, pkt_handler handler);
 
 static inline void 
-d2sc_nfrt_dequeue_new_msgs(rte_ring *msg_ring);
+d2sc_nfrt_dequeue_new_msgs(struct rte_ring *msg_ring);
 
 static inline int d2sc_nfrt_nf_srv_time(struct d2sc_nf_info *info);
 
@@ -124,7 +125,7 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 	const struct rte_memzone *mz_nts;
 	const struct rte_memzone *mz_nfs_per_nt;
 	const struct rte_memzone *mz_nt_available;
-	struct rte_memzone *mp_pkt;
+	struct rte_mempool *mp_pkt;
 	struct d2sc_sc **scp;
 	struct d2sc_nf_msg *start_msg;
 	int ret_eal, ret_parse, ret_final;
@@ -133,7 +134,7 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 		return -1;
 		
 	argc -= ret_eal;
-	agrv += ret_eal;
+	argv += ret_eal;
 	
 	/* Reset getopt global variables opterr and optind to their default values */
 	opterr = 0; optind = 1;
@@ -160,8 +161,8 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 		rte_exit(EXIT_FAILURE, "No NF info mempool found\n");
 	
 	/* Lookup mempool for NF messages */
-	nf_msg_mp = rte_mempool_lookup(MP_NF_MSG_NAME);
-	if (nf_msg_mp == NULL)
+	nf_msg_pool = rte_mempool_lookup(MP_NF_MSG_NAME);
+	if (nf_msg_pool == NULL)
 		rte_exit(EXIT_FAILURE, "No NF msg mempool found\n");
 		
 	/* Initialize the info struct */
@@ -185,7 +186,7 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 		rte_exit(EXIT_FAILURE, "Cannot get NF type memzone\n");
 	nts = mz_nts->addr;
 	
-	mz_nfs_per_nt = rte_memzone_loopup(MZ_NFS_PER_NT_INFO);
+	mz_nfs_per_nt = rte_memzone_lookup(MZ_NFS_PER_NT_INFO);
 	if (mz_nfs_per_nt == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get NFs per NF type memzone\n");
 	nfs_per_nt_num = mz_nfs_per_nt->addr;
@@ -208,16 +209,16 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 	
 	d2sc_sc_print(default_sc);
 	
-	new_msg_ring = rte_ring_lookup(MGR_MSG_Q_NAME);
-	if (new_msg_ring == NULL)
+	new_msg_queue = rte_ring_lookup(MGR_MSG_Q_NAME);
+	if (new_msg_queue == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get new msg ring\n");
 		
-	scale_msg_ring = rte_ring_lookup(MGR_SCALE_Q_NAME);
-	if (scale_msg_ring == NULL)
+	scale_msg_queue = rte_ring_lookup(MGR_SCALE_Q_NAME);
+	if (scale_msg_queue == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get scale msg ring\n");
 		
 	/* Put this NF's info struct into nf msg pool for Manager to process startup */
-	if (rte_mempool_get(nf_msg_mp, (void **)(&start_msg)) != 0) {
+	if (rte_mempool_get(nf_msg_pool, (void **)(&start_msg)) != 0) {
 		rte_mempool_put(nf_info_mp, nf_info);	// give back memory to mempool obtained in NF init function
 		rte_exit(EXIT_FAILURE, "Cannot create starup msg\n");
 	}
@@ -225,15 +226,15 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 	start_msg->msg_type = MSG_NF_STARTING;
 	start_msg->msg_data = nf_info;
 	
-	if (rte_ring_enqueue(new_msg_ring, start_msg) < 0) {
+	if (rte_ring_enqueue(new_msg_queue, start_msg) < 0) {
 		rte_mempool_put(nf_info_mp, nf_info);
-		rte_mempool_put(nf_msg_mp, start_msg);
+		rte_mempool_put(nf_msg_pool, start_msg);
 		rte_exit(EXIT_FAILURE, "Cannot send nf_info to manager\n");
 	}
 	
 	/* Wait for an NF ID to be assigned by the manager */
 	RTE_LOG(INFO, NFRT, "Waiting for manager to assign an ID...\n");
-	for (; nf_info->status == (uint16_t)NF_WAITING_FOR_ID; ) {
+	for (; nf_info->status == (uint16_t)NF_WAITTING_FOR_ID; ) {
 		sleep(1);
 	}
 	
@@ -281,7 +282,7 @@ int d2sc_nfrt_scale_init(const char *nf_name) {
 	d2sc_sc_print(default_sc);
 	
 	/* Put this NF's info struct into nf msg pool for Manager to process startup */
-	if (rte_mempool_get(nf_msg_mp, (void **)(&start_msg)) != 0) {
+	if (rte_mempool_get(nf_msg_pool, (void **)(&start_msg)) != 0) {
 		rte_mempool_put(nf_info_mp, scaled_nf_info);	// give back memory to mempool obtained in NF init function
 		rte_exit(EXIT_FAILURE, "Cannot create starup msg\n");
 	}
@@ -291,7 +292,7 @@ int d2sc_nfrt_scale_init(const char *nf_name) {
 	
 	/* Wait for an NF ID to be assigned by the manager */
 	RTE_LOG(INFO, NFRT, "Waiting for manager to assign an ID...\n");
-	for (; scaled_nf_info->status == (uint16_t)NF_WAITING_FOR_ID; ) {
+	for (; scaled_nf_info->status == (uint16_t)NF_WAITTING_FOR_ID; ) {
 		sleep(1);
 	}
 	
@@ -301,7 +302,7 @@ int d2sc_nfrt_scale_init(const char *nf_name) {
 		rte_exit(NF_ID_CONFLICT, "Selected ID already in use. Exiting...\n");
 	} else if (scaled_nf_info->status == NF_NO_IDS) {
 		rte_mempool_put(nf_info_mp, scaled_nf_info);
-		rte_exit(NF_NO_IDS, "There are no ids available for this NF\n");
+		rte_exit(NF_NO_IDS, "There are no ids available for this scaling NF\n");
 	} else if (scaled_nf_info->status != NF_STARTING) {
 		rte_mempool_put(nf_info_mp, scaled_nf_info);
 		rte_exit(EXIT_FAILURE, "Error occurred during manager initialization\n");
@@ -325,9 +326,8 @@ int d2sc_nfrt_scale_init(const char *nf_name) {
 }
 
 
-
 int d2sc_nfrt_run_callback(struct d2sc_nf_info *info, struct buf_queue *bq, pkt_handler handler, 
-callback_hander callback) {
+callback_handler callback) {
 	struct rte_mbuf *pkts[PKT_RD_SIZE];
 	int ret;
 	uint16_t nb_pkts;
@@ -387,14 +387,14 @@ int d2sc_nfrt_nf_ready(struct d2sc_nf_info *info) {
 	int ret;
 	
 	/* Put this NF's info struct into msg queue for manager to process startup */
-	ret = rte_mempool_get(nf_msg_mp, (void **)(&msg));
+	ret = rte_mempool_get(nf_msg_pool, (void **)(&msg));
 	if (ret != 0) return ret;
 		
 	msg->msg_type = MSG_NF_READY;
 	msg->msg_data = info;
-	ret = rte_ring_enqueue(new_msg_ring, msg);
+	ret = rte_ring_enqueue(new_msg_queue, msg);
 	if (ret < 0) {
-		rte_mempool_put(nf_msg_mp, msg);
+		rte_mempool_put(nf_msg_pool, msg);
 		return ret;
 	}
 	return 0;
@@ -402,7 +402,7 @@ int d2sc_nfrt_nf_ready(struct d2sc_nf_info *info) {
 
 
 int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg) {
-	switch (msg->type) {
+	switch (msg->msg_type) {
 		case MSG_STOP:
 			RTE_LOG(INFO, NFRT, "Shutting down...\n");
 			keep_running = 0;
@@ -421,11 +421,11 @@ uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 	struct d2sc_scale_msg *msg;	
 	struct d2sc_scale_info *scale_info;
 	uint8_t scale_sig = SCALE_NO;
-	int num_msgs = rte_ring_count(scale_msg_ring);
+	int num_msgs = rte_ring_count(scale_msg_queue);
 	
 	if (num_msgs == 0) return SCALE_NO;
 		
-	if (rte_ring_dequeue_bulk(scale_msg_ring, msgs, num_msgs, NULL) == 0)
+	if (rte_ring_dequeue_bulk(scale_msg_queue, msgs, num_msgs, NULL) == 0)
 		return -1;
 		
 	for (i = 0; i < num_msgs; i++) {
@@ -440,7 +440,7 @@ uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 				break;
 			case SCALE_BLOCK:
 				if (scale_info->inst_id == nf_info->inst_id) {
-					scale_sig = SCALE_BLCOK;
+					scale_sig = SCALE_BLOCK;
 					non_blocking = 0;
 					d2sc_nfrt_block(nf_info);
 				}
@@ -450,22 +450,22 @@ uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 				break;		
 		}
 		
-		rte_mempool_put(nf_msg_mp, (void *)msg);
+		rte_mempool_put(nf_msg_pool, (void *)msg);
 	}
 	return scale_sig;
 }
 
 
 void d2sc_nfrt_stop(struct d2sc_nf_info *info) {
-	struct d2sc_nf_msg stop_msg;
+	struct d2sc_nf_msg *stop_msg;
 	info->status = NF_STOPPED;
 	
 	/* Put this NF's info struct back into the queue for manager to ack stop */
-	if (new_msg_ring == NULL) {
+	if (new_msg_queue == NULL) {
 		rte_mempool_put(nf_info_mp, info);	//give back memory
 		rte_exit(EXIT_FAILURE, "Cannot get nf_info ring for stopping");
 	}
-	if (rte_mempool_get(nf_msg_mp, (void **)(&stop_msg)) != 0) {
+	if (rte_mempool_get(nf_msg_pool, (void **)(&stop_msg)) != 0) {
 		rte_mempool_put(nf_info_mp, info);
 		rte_exit(EXIT_FAILURE, "Cannot create stop msg");
 	}
@@ -473,23 +473,22 @@ void d2sc_nfrt_stop(struct d2sc_nf_info *info) {
 	stop_msg->msg_type = MSG_NF_STOPPING;
 	stop_msg->msg_data = info;
 	
-	if (rte_ring_enqueue(new_msg_ring, stop_msg) < 0) {
+	if (rte_ring_enqueue(new_msg_queue, stop_msg) < 0) {
 		rte_mempool_put(nf_info_mp, info);
-		rte_mempool_put(nf_msg_mp, stop_msg);
+		rte_mempool_put(nf_msg_pool, stop_msg);
 		rte_exit(EXIT_FAILURE, "Cannot send nf_info to manager for stopping");
 	}
 }
 
-
 void d2sc_nfrt_block(struct d2sc_nf_info *info) {
-	struct d2sc_nf_msg block_msg;
+	struct d2sc_nf_msg *block_msg;
 	info->status = NF_BLOCKED;
 	
-	if (new_msg_ring == NULL) {
+	if (new_msg_queue == NULL) {
 		rte_mempool_put(nf_info_mp, info);
 		rte_exit(EXIT_FAILURE, "Cannot get nf_info ring for stopping");
 	}
-	if (rte_mempool_get(nf_msg_mp, (void **)(&block_msg)) != 0) {
+	if (rte_mempool_get(nf_msg_pool, (void **)(&block_msg)) != 0) {
 		rte_mempool_put(nf_info_mp, info);
 		rte_exit(EXIT_FAILURE, "Cannot create block msg");
 	}
@@ -497,9 +496,9 @@ void d2sc_nfrt_block(struct d2sc_nf_info *info) {
 	block_msg->msg_type = MSG_NF_BLOCKING;
 	block_msg->msg_data = info;
 	
-	if (rte_ring_enqueue(new_msg_ring, block_msg) < 0) {
+	if (rte_ring_enqueue(new_msg_queue, block_msg) < 0) {
 		rte_mempool_put(nf_info_mp, info);
-		rte_mempool_put(nf_msg_mp, block_msg);
+		rte_mempool_put(nf_msg_pool, block_msg);
 		rte_exit(EXIT_FAILURE, "Cannot send nf_info to the manager for blocking");
 	}
 		
@@ -591,7 +590,7 @@ static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name) {
 	info = (struct d2sc_nf_info *)mp_data;
 	info->inst_id = init_inst_id;
 	info->type_id = type_id;
-	info->status = NF_WAITING_FOR_ID;
+	info->status = NF_WAITTING_FOR_ID;
 	info->max_load = MAX_LOAD;
 	info->name = name;
 	return info;
@@ -639,7 +638,7 @@ d2sc_nfrt_dequeue_pkts(void **pkts, struct d2sc_nf_info *info, pkt_handler handl
 }
 
 static inline void 
-d2sc_nfrt_dequeue_new_msgs(rte_ring *msg_ring) {
+d2sc_nfrt_dequeue_new_msgs(struct rte_ring *msg_ring) {
 	struct d2sc_nf_msg *msg;
 	
 	/* Check whether this NF has any msgs from the manager */
@@ -649,21 +648,21 @@ d2sc_nfrt_dequeue_new_msgs(rte_ring *msg_ring) {
 	msg = NULL;
 	rte_ring_dequeue(msg_ring, (void **)(&msg));
 	d2sc_nfrt_handle_new_msg(msg);
-	rte_mempool_put(nf_msg_mp, (void *)msg);
+	rte_mempool_put(nf_msg_pool, (void *)msg);
 }
 
 static inline int d2sc_nfrt_nf_srv_time(struct d2sc_nf_info *info) {
 	struct d2sc_nf_msg *srv_time_msg;
 	int ret;
 	
-	ret = rte_mempool_get(nf_msg_mp, (void **)(&srv_time_msg));
+	ret = rte_mempool_get(nf_msg_pool, (void **)(&srv_time_msg));
 	if (ret != 0) return ret;
 	
 	srv_time_msg->msg_type = MSG_NF_SRV_TIME;
 	srv_time_msg->msg_data = info;
-	ret = rte_ring_enqueue(new_msg_ring, srv_time_msg);
+	ret = rte_ring_enqueue(new_msg_queue, srv_time_msg);
 	if (ret < 0) {
-		rte_mempool_put(nf_msg_mp, srv_time_msg);
+		rte_mempool_put(nf_msg_pool, srv_time_msg);
 		return ret;
 	}
 	return 0;

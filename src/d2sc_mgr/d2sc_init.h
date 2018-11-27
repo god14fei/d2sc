@@ -37,9 +37,9 @@
 
 /*****************************Internal library********************************/
 
-#include "d2sc_mgr/d2sc_prase.h"
+#include "d2sc_mgr/d2sc_parse.h"
 #include "d2sc_mgr/d2sc_stats.h"
-#include "d2sc_mgr/sc.h"
+#include "d2sc_sc.h"
 #include "d2sc_includes.h"
 #include "d2sc_common.h"
 

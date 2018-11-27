@@ -16,8 +16,8 @@
 
 /**********************NF scale up and block signal***************************/
 
-static uint8_t up_signal = 0;
-static uint8_t block_signal = 0;
+uint8_t up_signal = 0;
+uint8_t block_signal = 0;
 
 
 /************************Internal functions prototypes************************/
@@ -99,7 +99,7 @@ void d2sc_scale_up_signal(void) {
 	up_signal = 0;
 }
 
-void d2sc_scale_block_singal(void) {
+void d2sc_scale_block_signal(void) {
 	uint16_t i;
 	static uint32_t cnter = 0;
 	static uint32_t check_interval = 5;
@@ -107,7 +107,6 @@ void d2sc_scale_block_singal(void) {
 	for (i = 0; i < MAX_NFS; i++) {
 	
 		/* Check whether the NF queue is empty */
-		rx_q = nfs[i].rx_q;
 		if (d2sc_scale_get_free_size(i) == NF_RING_SIZE - 1) {
 			// The NF queue keeps empty in 5 checks
 			if (++cnter == check_interval) {
@@ -161,7 +160,7 @@ void d2sc_scale_block_execute(void) {
 			scale_info = calloc(1, sizeof(struct d2sc_scale_info));
 			scale_info->inst_id = i;
 			scale_info->name = nfs[i].nf_info->name;
-			d2sc_scale_send_msg(SCALE_BLOCK, (void *)scale_info)
+			d2sc_scale_send_msg(SCALE_BLOCK, (void *)scale_info);
 		}
 	}
 	
@@ -202,26 +201,26 @@ inline static int d2sc_scale_get_info(uint16_t *ids) {
 }
 
 inline static uint32_t d2sc_scale_get_free_size(uint16_t nf_id) {
-	rte_ring *nf_q;
+	struct rte_ring *nf_q;
 	uint32_t free_size;
 	
 	if (!d2sc_nf_is_valid(&nfs[nf_id]))
 		return 0;
 		
 	nf_q = nfs[nf_id].rx_q;	
-	free_size = nf_q->mask + nf_q->cons->tail - nf_q->prod->head;	
+	free_size = nf_q->mask + nf_q->cons.tail - nf_q->prod.head;	
 	return free_size;
 }
 
 inline static uint32_t d2sc_scale_get_used_size(uint16_t nf_id) {
-	rte_ring *nf_q;
+	struct rte_ring *nf_q;
 	uint32_t used_size;
 	
 	if (!d2sc_nf_is_valid(&nfs[nf_id]))
 		return 0;
 		
 	nf_q = nfs[nf_id].rx_q;
-	used_size = nf_q->prod->tail - nf_q->cons->head;
+	used_size = nf_q->prod.tail - nf_q->cons.head;
 	return used_size;
 }
 

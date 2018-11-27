@@ -21,9 +21,9 @@
 ******************************************************************************/
 
 
-#include "d2sc_mgr.h"
+#include "d2sc_mgr/d2sc_mgr.h"
+#include "d2sc_mgr/d2sc_nf.h"
 #include "d2sc_pkt_process.h"
-#include "d2sc_nf.h"
 
 /**********************Internal Functions Prototypes**************************/
 
@@ -127,7 +127,7 @@ void d2sc_pkt_flush_nf_bq(struct pkt_buf *nf_buf, uint16_t nf_id) {
 }
 
 
-void d2sc_flush_all_bqs(struct buf_queue *mgr_bq) {
+void d2sc_pkt_flush_all_bqs(struct buf_queue *mgr_bq) {
 	uint16_t i;
 	struct pkt_buf *nf_buf;
 	
@@ -144,7 +144,7 @@ void d2sc_flush_all_bqs(struct buf_queue *mgr_bq) {
 void d2sc_pkt_process_tx_batch(struct buf_queue *mgr_bq, struct rte_mbuf *tx_pkts[], uint16_t nb_tx, struct d2sc_nf *nf) {
 	uint16_t i;
 	struct d2sc_pkt_meta *meta;
-	struct packt_buf *out_buf;
+	struct pkt_buf *out_buf;
 	
 	if (mgr_bq == NULL || tx_pkts == NULL || nf == NULL)
 		return;
@@ -193,7 +193,7 @@ void d2sc_pkt_flush_port_bq(struct buf_queue *mgr_bq, uint16_t portid) {
 	uint16_t i, nb_tx;
 	struct pkt_buf *port_buf;
 	
-	if (mgr_bq->mgr_bq != 1)
+	if (mgr_bq->mgr_nf != 1)
 		return;
 	
 	port_buf = &mgr_bq->tx_thread->tx_bufs[portid];
@@ -273,7 +273,7 @@ static inline void d2sc_pkt_process_next_act(struct buf_queue *mgr_bq, struct rt
 			nf->stats.act_tonf++;
 			d2sc_pkt_enqueue_bq(mgr_bq, meta->dst, pkt);
 			break;
-		case D2SC_NF_ACT_OUT;
+		case D2SC_NF_ACT_OUT:
 			nf->stats.act_out++;
 			d2sc_pkt_enqueue_port(mgr_bq, meta->dst, pkt);
 			break;

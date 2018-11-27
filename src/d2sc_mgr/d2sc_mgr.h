@@ -38,8 +38,9 @@
 
 /******************************Internal headers*******************************/
 
-#include "d2sc_mgr/d2sc_args.h"
+#include "d2sc_mgr/d2sc_parse.h"
 #include "d2sc_mgr/d2sc_init.h"
+#include "d2sc_mgr/d2sc_scale.h"
 #include "d2sc_includes.h"
 #include "d2sc_sc.h"
 #include "d2sc_flow_table.h"

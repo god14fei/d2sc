@@ -46,7 +46,7 @@ int d2sc_fs_init(void) {
 	return 0;
 }
 
-int d2sc_fs_get_entry(rte_mbuf *pkt, struct d2sc_flow_entry **flow_entry) {
+int d2sc_fs_get_entry(struct rte_mbuf *pkt, struct d2sc_flow_entry **flow_entry) {
 	int ret; 
 	ret = d2sc_ft_lookup_pkt(ft, pkt, (char **)flow_entry);
 	

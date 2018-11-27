@@ -123,12 +123,12 @@ static int tx_thread_main(void *arg) {
 /*
  * Scale thread periodically monitor whether an NF type needs to perform scaling.
  */
-static void scale_thread_main() {
+static int scale_thread_main(void *arg) {
 	const unsigned scale_iter = SCALE_SLEEP_TIME;
 	
 	RTE_LOG(INFO, MGR, "Core %d: Running scale thread\n", rte_lcore_id());
 	
-	for (; work_keep_running && sleep(scale_iter) <= scale_iter;) {
+	for (; worker_keep_running && sleep(scale_iter) <= scale_iter;) {
 		d2sc_scale_check_overload();
 		d2sc_scale_up_signal();
 		if (up_signal == 1) {
@@ -139,6 +139,7 @@ static void scale_thread_main() {
 			d2sc_scale_block_execute();
 		}
 	}
+	return 0;
 }
 
 
@@ -217,7 +218,7 @@ int main(int argc, char *argv[]) {
 	
 	/* Reserve n cores for: 1 stats, 1 final TX out, 1 scaling, and num_tx_threads for RX */
 	cur_lcore = rte_lcore_id();
-	rx_lcores = num_tx_threads;
+	rx_lcores = num_rx_threads;
 	tx_lcores = rte_lcore_count() - rx_lcores - 2;
 	
 	/* Offset cur_lcore to start assigning TX cores */

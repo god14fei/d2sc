@@ -238,7 +238,7 @@ static int parse_stats_output(const char *stats_output) {
 }
 
 
-static in parse_stats_sleep_time(const char *sleep_time) {
+static int parse_stats_sleep_time(const char *sleep_time) {
 	char *end = NULL;
 	unsigned long temp;
 	
@@ -247,5 +247,5 @@ static in parse_stats_sleep_time(const char *sleep_time) {
 		return -1;
 		
 	global_stats_sleep_time = (uint16_t)temp;
-	return 0
+	return 0;
 }

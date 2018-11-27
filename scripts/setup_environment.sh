@@ -48,7 +48,7 @@ if [ -z "$D2SC_SKIP_HUGEPAGES" ]; then
 	
 	sudo sh -c "echo $hp_count > /sys/devices/system/node/node0/hugepages/hugepages-${hp_size}kB/nr_hugepages"
 	hp_free=$(cat /proc/meminfo | grep HugePages_Free | awk '{print $2}')
-	if [ $hp_free == "0"]; then
+	if [ $hp_free == "0" ]; then
 		echo "No free hugepages. Did you try turning it off and on again?"
 		exit 1
 	fi
@@ -94,6 +94,6 @@ fi
 echo "Finished Binding"
 $DPDK_DEVBIND --status
 
-sudo bash $D2SC_HOME/srcipts/no_hyperthread.sh
+sudo bash $D2SC_HOME/scripts/no_hyperthread.sh
 
 echo "Environment setup complete."

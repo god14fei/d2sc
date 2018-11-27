@@ -13,7 +13,7 @@
 
 #include <rte_common.h>
 #include <rte_memory.h>
-#include <debug.h>
+#include <rte_debug.h>
 #include <rte_malloc.h>
 
 #include <errno.h>
@@ -77,7 +77,7 @@ void d2sc_sc_print(struct d2sc_sc *sc) {
 }
 
 
-static inline uint8_t d2sc_sc_next_act(struct d2sc_sc *sc, struct rte_mbuf *pkt) {
+uint8_t d2sc_sc_next_act(struct d2sc_sc *sc, struct rte_mbuf *pkt) {
 	uint8_t cur_index = d2sc_get_pkt_sc_index(pkt);
 	
 	if (unlikely(cur_index >= sc->sc_len))
@@ -86,7 +86,7 @@ static inline uint8_t d2sc_sc_next_act(struct d2sc_sc *sc, struct rte_mbuf *pkt)
 	return sc->sc_entry[cur_index+1].act;
 }
 
-static inline uint16_t d2sc_sc_next_dst(struct d2sc_sc *sc, struct rte_mbuf *pkt) {
+uint16_t d2sc_sc_next_dst(struct d2sc_sc *sc, struct rte_mbuf *pkt) {
 	uint8_t cur_index = d2sc_get_pkt_sc_index(pkt);
 	
 	if (unlikely(cur_index >= sc->sc_len))
@@ -95,7 +95,7 @@ static inline uint16_t d2sc_sc_next_dst(struct d2sc_sc *sc, struct rte_mbuf *pkt
 	return sc->sc_entry[cur_index+1].dst;
 }
 
-struct d2sc_sc * d2sc_sc_crate(void) {
+struct d2sc_sc *d2sc_sc_create(void) {
 	struct d2sc_sc *sc;
 	sc = rte_calloc("D2SC_service_chain", 1, sizeof(struct d2sc_sc), 0);
 	if (sc == NULL) {

@@ -16,7 +16,7 @@
 
 #include <rte_mbuf.h>
 #include "d2sc_common.h"
-#include "d2sc_pkt_common.h"
+#include "d2sc_pkt_process.h"
 
 /************************************API**************************************/
 
@@ -27,7 +27,7 @@ int d2sc_nfrt_scale_init(const char *nf_name);
 
 
 int d2sc_nfrt_run_callback(struct d2sc_nf_info *info, struct buf_queue *bq, 
-	int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *act), int(*callback_handler(void));
+	int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *meta), int(*callback_handler)(void));
 
 
 int d2sc_nfrt_run(struct d2sc_nf_info *info, struct buf_queue *bq, 
@@ -46,7 +46,9 @@ int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg);
 uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info);
 
 
-int d2sc_nfrt_stop(struct d2sc_nf_info *info);
+void d2sc_nfrt_stop(struct d2sc_nf_info *info);
+
+void d2sc_nfrt_block(struct d2sc_nf_info *info);
 
 
 // struct rte_ring *d2sc_nfrt_get_tx_ring(struct d2sc_nf_info *info);
