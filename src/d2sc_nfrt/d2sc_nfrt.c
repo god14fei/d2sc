@@ -89,7 +89,7 @@ static uint16_t type_id = -1;
 extern uint8_t keep_running;
 
 // True as long as the NF is not blocked
-static uint8_t non_blocking = 1;
+extern uint8_t non_blocking;
 
 // Shared data for default service chain
 struct d2sc_sc *default_sc;

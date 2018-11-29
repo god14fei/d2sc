@@ -271,7 +271,7 @@ static int init_mbuf_mps(void) {
  */
 static int init_nf_info_mp(void) {
 	
-	printf("Creating mbuf pool '%s' ...\n", MP_NF_INFO_NAME);
+	printf("Creating mbuf mempool '%s' ...\n", MP_NF_INFO_NAME);
 	nf_info_mp = rte_mempool_create(MP_NF_INFO_NAME, MAX_NFS, NF_INFO_SIZE, NF_INFO_CACHE_SIZE, 
 				0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
 																	
@@ -283,7 +283,7 @@ static int init_nf_info_mp(void) {
  */
 static int init_nf_msg_mp(void) {
 	
-	printf("Creating mbuf pool '%s' ...\n", MP_NF_MSG_NAME);
+	printf("Creating mbuf mempool '%s' ...\n", MP_NF_MSG_NAME);
 	nf_msg_mp = rte_mempool_create(MP_NF_MSG_NAME, MAX_NFS * NF_MSG_RING_SIZE, NF_MSG_SIZE, 
 				NF_MSG_CACHE_SIZE, 0, NULL, NULL, NULL, NULL, rte_socket_id(), NO_FLAGS);
 							 

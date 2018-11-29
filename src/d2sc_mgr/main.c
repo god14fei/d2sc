@@ -167,7 +167,7 @@ static int scale_thread_main(void *arg) {
 		}
 	}
 	
-	RTE_LOG(INFO, MGR, "Core %d: Scale thread done\n", rte_lcore_id());	
+	RTE_LOG(INFO, MGR, "Core %d: Scale thread done!\n", rte_lcore_id());	
 		
 	return 0;
 }
@@ -219,7 +219,7 @@ static void master_thread_main(void) {
 		rte_lcore_id(), num_nfs);
 	}
 	
-	RTE_LOG(INFO, MGR, "Core %d: Master thread done\n", rte_lcore_id());	
+	RTE_LOG(INFO, MGR, "Core %d: Master thread done!\n", rte_lcore_id());	
 }
 
 
@@ -257,6 +257,7 @@ int main(int argc, char *argv[]) {
 	RTE_LOG(INFO, MGR, "%d cores available in total\n", rte_lcore_count());
 	RTE_LOG(INFO, MGR, "%d cores available for handling manager RX queues\n", rx_lcores);
 	RTE_LOG(INFO, MGR, "%d cores available for handling TX queues\n", tx_lcores);
+	RTE_LOG(INFO, MGR, "%d cores available for handling NF scaling", 1);
 	RTE_LOG(INFO, MGR, "%d cores available for handling stats\n", 1);
 	
 	/* Evenly assign NFs to TX threads */

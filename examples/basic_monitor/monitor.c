@@ -53,6 +53,7 @@ extern struct port_info *ports;
 
 // True as long as the NF should keep processing packets
 uint8_t keep_running = 1;
+uint8_t non_blocking = 1;
 static uint8_t scaler_keep_running = 1;
 
 /*
@@ -159,10 +160,11 @@ static void d2sc_handle_signal(int sig)
 {
 	if (sig == SIGINT || sig == SIGTERM)
 		keep_running = 0;
+		non_blocking = 0;
 }
 
 static void master_nf_thread(void) {
-	RTE_LOG(INFO, NF, "Core %d: Runnning inital NF thread\n", rte_lcore_id());
+	RTE_LOG(INFO, NF, "Core %d: Runnning initial NF thread\n", rte_lcore_id());
 	
 	cur_cycles = rte_get_tsc_cycles();
 	last_cycles = rte_get_tsc_cycles();
@@ -172,7 +174,7 @@ static void master_nf_thread(void) {
 	// Stop the scaling thread
 	scaler_keep_running = 0;
 	
-	printf("If we reach here, inital NF is ending\n");
+	printf("If we reach here, initial NF is ending\n");
 }
 
 static void scaled_nf_thread(void) {
@@ -216,7 +218,7 @@ int main(int argc, char *argv[]) {
 	
 	if (parse_app_args(argc, argv, progname) < 0) {
 		d2sc_nfrt_stop(nf_info);
-		rte_exit(EXIT_FAILURE, "Invalid commanline arguments\n");
+		rte_exit(EXIT_FAILURE, "Invalid commandline arguments\n");
 	}
 	
 	cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);

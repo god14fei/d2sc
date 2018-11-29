@@ -21,7 +21,6 @@
 #define SCALE_NO 0
 
 extern uint8_t up_signal;
-extern uint8_t block_signal;
 
 struct d2sc_scale_info {
 	union {

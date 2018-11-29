@@ -144,7 +144,7 @@ static void usage(void) {
 	printf(
 		"%s [EAL options] -- \n"
 		"\t-p (manatory) PORTMASK: hexadecimal bitmask of ports to use\n"
-		"\t-t NUM_NTS: nuber of unique nf types allowed. defaults to 16 (optional)\n"
+		"\t-t NUM_NTS: number of unique nf types allowed. defaults to 16 (optional)\n"
 		"\t-d DEFAULT_NT: the nf type to initially receive packets. defaults to 1 (optional)\n"
 		"\t-r NUM_RX_THREADS: the number of rx thread to use. defaults to 2 (optional)\n"
 		"\t-s STATS_OUTPUT: where to output manager runtime stats (stdout/stderr). defaults to NONE (optional)\n"
