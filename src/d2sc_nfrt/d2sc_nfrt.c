@@ -67,7 +67,7 @@ struct d2sc_nf *nfs;
 // Shared data from manager, has NF map information used for NF side TX
 uint16_t **nts;
 uint16_t *nfs_per_nt_num;
-uint16_t *nfs_pet_nt_available;
+uint16_t *nfs_per_nt_available;
 
 // Shared data for NF info
 extern struct d2sc_nf_info *nf_info;
@@ -105,7 +105,7 @@ static void d2sc_nfrt_usage(const char *progname);
 
 static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name);
 
-static void d2sc_nfrt_nf_bq_init(struct buf_queue *bq);
+static void d2sc_nfrt_nf_bq_init(struct buf_queue **bq);
 
 static inline uint16_t 
 d2sc_nfrt_dequeue_pkts(void **pkts, struct d2sc_nf_info *info, pkt_handler handler);
@@ -169,12 +169,12 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 	nf_info = d2sc_nfrt_info_init(nf_name);
 	
 	/* Initialize empty NF's buffer queue */
-	d2sc_nfrt_nf_bq_init(nf_bq);
+	d2sc_nfrt_nf_bq_init(&nf_bq);
 	
 	mp_pkt = rte_mempool_lookup(MP_PKTMBUF_NAME);
 	if (mp_pkt == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get mempool for mbufs\n");
-		
+	
 	/* Lookup memzone for NF structures*/
 	mz_nf = rte_memzone_lookup(MZ_NF_INFO);
 	if (mz_nf == NULL)
@@ -190,22 +190,22 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 	if (mz_nfs_per_nt == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get NFs per NF type memzone\n");
 	nfs_per_nt_num = mz_nfs_per_nt->addr;
-	
+		
 	mz_nt_available = rte_memzone_lookup(MZ_NT_AVAILABLE_INFO);
-	if (mz_nt_available = NULL)
+	if (mz_nt_available == NULL)
 		rte_exit(EXIT_FAILURE, "Cannt get NF type available memzone\n");
-	nfs_pet_nt_available = mz_nt_available->addr;
+	nfs_per_nt_available = mz_nt_available->addr;
 	
 	mz_port = rte_memzone_lookup(MZ_PORT_INFO);	
 	if (mz_port == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get port memzone\n");
 	ports = mz_port->addr;
-	
+		
 	mz_scp = rte_memzone_lookup(MZ_SCP_INFO);
 	if (mz_scp == NULL)
 		rte_exit(EXIT_FAILURE, "Cannt get service chain pointer structure\n");
 	scp = mz_scp->addr;
-	default_sc = *scp;
+	default_sc = *scp;	
 	
 	d2sc_sc_print(default_sc);
 	
@@ -277,7 +277,7 @@ int d2sc_nfrt_scale_init(const char *nf_name) {
 	scaled_nf_info = d2sc_nfrt_info_init(nf_name);
 	
 	/* Initialize empty scaled NF's buffer queue */
-	d2sc_nfrt_nf_bq_init(scaled_nf_bq);
+	d2sc_nfrt_nf_bq_init(&scaled_nf_bq);
 	
 	d2sc_sc_print(default_sc);
 	
@@ -331,6 +331,7 @@ callback_handler callback) {
 	struct rte_mbuf *pkts[PKT_RD_SIZE];
 	int ret;
 	uint16_t nb_pkts;
+	static uint16_t srv_time_flag = 0;
 	
 	static uint64_t last_cycle;
 	static uint64_t cur_cycles;
@@ -354,10 +355,10 @@ callback_handler callback) {
 			if (likely(nb_pkts > 0)) {
 				d2sc_pkt_process_tx_batch(bq, pkts, nb_pkts, &nfs[info->inst_id]);
 			}
-		
+			
 			/* Flush the packet buffers */
 			d2sc_pkt_enqueue_tx_ring(bq->tx_buf, info->inst_id);
-			d2sc_pkt_fush_all_bqs(bq);
+			d2sc_pkt_flush_all_bqs(bq);
 		
 			d2sc_nfrt_dequeue_new_msgs(nfs[info->inst_id].msg_q);
 		
@@ -367,12 +368,17 @@ callback_handler callback) {
 			cur_cycles = rte_get_tsc_cycles();
 			info->srv_time = (cur_cycles - last_cycle) / rte_get_timer_hz();
 			last_cycle = cur_cycles;
-		
-			/* Send nf srv_time msg to manager */
-			ret = d2sc_nfrt_nf_srv_time(info);
-			if (ret != 0) {
-				rte_exit(EXIT_FAILURE, "Unable to send nf service time msg to manager\n");
+			
+			if (srv_time_flag = 0) {
+				/* Send nf srv_time msg to manager */
+				printf("Start to compute the service time\n");
+				ret = d2sc_nfrt_nf_srv_time(info);
+				if (ret != 0) {
+					rte_exit(EXIT_FAILURE, "Unable to send nf service time msg to manager\n");
+				}
+				srv_time_flag = 1;
 			}
+			
 		}
 	}
 	
@@ -578,7 +584,7 @@ static int d2sc_nfrt_parse_args(int argc, char *argv[]) {
 				if (type_id == 0) type_id = -1;
 				break;
 			case '?':
-				onvm_nfrt_usage(progname);
+				d2sc_nfrt_usage(progname);
 				if (optopt == 'n')
 					fprintf(stderr, "Option -%c requires an argument.\n", optopt);
 				else if (isprint(optopt))
@@ -629,12 +635,12 @@ static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name) {
 	return info;
 }
 
-static void d2sc_nfrt_nf_bq_init(struct buf_queue *bq) {
-	bq = calloc(1, sizeof(struct buf_queue));
-	bq->mgr_nf = 0;
-	bq->tx_buf = calloc(1, sizeof(struct pkt_buf));
-	bq->id = init_inst_id;
-	bq->rx_bufs = calloc(MAX_NFS, sizeof(struct pkt_buf));
+static void d2sc_nfrt_nf_bq_init(struct buf_queue **bq) {
+	(*bq) = calloc(1, sizeof(struct buf_queue));
+	(*bq)->mgr_nf = 0;
+	(*bq)->tx_buf = calloc(1, sizeof(struct pkt_buf));
+	(*bq)->id = init_inst_id;
+	(*bq)->rx_bufs = calloc(MAX_NFS, sizeof(struct pkt_buf));
 }
 
 static inline uint16_t 

@@ -88,7 +88,9 @@ int d2sc_ft_lookup_pkt(struct d2sc_ft *table, struct rte_mbuf *pkt, char **data)
 	if (ret < 0) {
 		return ret;
 	}
-	ft_index = rte_hash_lookup_with_hash(table->hash, (const char *)&key, pkt->hash.rss);
+	printf("Start to lookup hash\n");
+	ft_index = rte_hash_lookup_with_hash(table->hash, (const void *)&key, pkt->hash.rss);
+	printf("Finish the hash lookup");
 	if (ft_index >= 0) {
 		*data = d2sc_ft_get_data(table, ft_index);
 	}

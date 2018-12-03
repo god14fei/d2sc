@@ -154,17 +154,17 @@ static int scale_thread_main(void *arg) {
 		}
 		
 		// Check the NF block signal
-		d2sc_scale_block_signal();
-		for (i = 0; i < MAX_NFS; i++) {
-			if (!d2sc_nf_is_valid(&nfs[i])) {
-				continue;
-			}
-			
-			if (nfs[i].bk_flag == 1) {
-				RTE_LOG(INFO, MGR, "Core %d: Notifying NF %"PRIu16" to scale block\n", rte_lcore_id(), i);
-				d2sc_scale_block_execute(i, SCALE_BLOCK);
-			}
-		}
+//		d2sc_scale_block_signal();
+//		for (i = 0; i < MAX_NFS; i++) {
+//			if (!d2sc_nf_is_valid(&nfs[i])) {
+//				continue;
+//			}
+//			
+//			if (nfs[i].bk_flag == 1) {
+//				RTE_LOG(INFO, MGR, "Core %d: Notifying NF %"PRIu16" to scale block\n", rte_lcore_id(), i);
+//				d2sc_scale_block_execute(i, SCALE_BLOCK);
+//			}
+//		}
 	}
 	
 	RTE_LOG(INFO, MGR, "Core %d: Scale thread done!\n", rte_lcore_id());	
@@ -195,7 +195,7 @@ static void master_thread_main(void) {
 	
 	RTE_LOG(INFO, MGR, "Core %d: Initiating shutdown sequence\n", rte_lcore_id());
 	
-	/* Stop aall RX and TX threads */
+	/* Stop all RX and TX threads */
 	worker_keep_running = 0;
 	
 	/* Tell all NFs to stop */
@@ -257,7 +257,7 @@ int main(int argc, char *argv[]) {
 	RTE_LOG(INFO, MGR, "%d cores available in total\n", rte_lcore_count());
 	RTE_LOG(INFO, MGR, "%d cores available for handling manager RX queues\n", rx_lcores);
 	RTE_LOG(INFO, MGR, "%d cores available for handling TX queues\n", tx_lcores);
-	RTE_LOG(INFO, MGR, "%d cores available for handling NF scaling", 1);
+	RTE_LOG(INFO, MGR, "%d cores available for handling NF scaling\n", 1);
 	RTE_LOG(INFO, MGR, "%d cores available for handling stats\n", 1);
 	
 	/* Evenly assign NFs to TX threads */

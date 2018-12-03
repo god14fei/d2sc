@@ -149,7 +149,7 @@ static void d2sc_stats_display_nfs(unsigned stime) {
 	fprintf(stats_out, "\nNFS\n");
 	fprintf(stats_out, "------\n");
 	for (i = 0; i < MAX_NFS; i++) {
-		if (!d2sc_nf_is_valid(&nfs[i]));
+		if (!d2sc_nf_is_valid(&nfs[i]))
 			continue;
 			
 		const uint64_t rx = nfs[i].stats.rx;

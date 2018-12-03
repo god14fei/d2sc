@@ -239,5 +239,6 @@ static inline int d2sc_nf_is_valid(struct d2sc_nf *nf) {
 
 #define RTE_LOGTYPE_MGR RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_NFRT RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_NF RTE_LOGTYPE_USER1
 
 #endif // _D2SC_COMMON_H_

@@ -21,14 +21,15 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
+#include <signal.h>
 
 #include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_ip.h>
 #include <rte_cycles.h>
 
-#include "onvm_nfrt.h"
-#include "onvm_pkt_helper.h"
+#include "d2sc_nfrt.h"
+#include "d2sc_pkt_helper.h"
 
 #define NF_NAME "basic_monitor"
 //#define MAX_LOAD 500
@@ -73,16 +74,16 @@ static int parse_app_args(int argc, char *argv[], const char *progname) {
 		switch (c) {
 			case 'p':
 				print_delay = strtoul(optarg, NULL, 10);
-				RTE_LOG(INFO, APP, "print_delay = %d\n", print_delay);
+				RTE_LOG(INFO, NF, "print_delay = %d\n", print_delay);
 				break;
 			case '?':
 				usage(progname);
 				if (optopt == 'p')
-					RTE_LOG(INFO, APP, "Option -%c requires an argument.\n", optopt);
+					RTE_LOG(INFO, NF, "Option -%c requires an argument.\n", optopt);
 				else if (isprint(optopt))
-					RTE_LOG(INFO, APP, "Unknown option `-%c'.\n", optopt);
+					RTE_LOG(INFO, NF, "Unknown option `-%c'.\n", optopt);
 				else
-					RTE_LOG(INFO, APP, "Unknown option character `\\x%x'.\n", optopt);
+					RTE_LOG(INFO, NF, "Unknown option character `\\x%x'.\n", optopt);
 				return -1;
 			default:
 				usage(progname);
@@ -151,7 +152,7 @@ packet_handler(struct rte_mbuf* pkt, struct d2sc_pkt_meta* meta) {
 	meta->dst = pkt->port;
 
 	if (d2sc_pkt_swap_src_mac_addr(pkt, meta->dst, ports) != 0) {
-		RTE_LOG(INFO, APP, "ERROR: Failed to swap src mac with dst mac!\n");
+		RTE_LOG(INFO, NF, "ERROR: Failed to swap src mac with dst mac!\n");
 	}
 	return 0;
 }
@@ -167,7 +168,7 @@ static void master_nf_thread(void) {
 	RTE_LOG(INFO, NF, "Core %d: Runnning initial NF thread\n", rte_lcore_id());
 	
 	cur_cycles = rte_get_tsc_cycles();
-	last_cycles = rte_get_tsc_cycles();
+	last_cycle = rte_get_tsc_cycles();
 	
 	d2sc_nfrt_run_callback(nf_info, nf_bq, &packet_handler, &callback_handler);
 	
@@ -177,7 +178,7 @@ static void master_nf_thread(void) {
 	printf("If we reach here, initial NF is ending\n");
 }
 
-static void scaled_nf_thread(void) {
+static int  scaled_nf_thread(void *arg) {
 	RTE_LOG(INFO, NF, "Core %d: Runnning scaled NF thread\n", rte_lcore_id());
 	
 	while (scaler_keep_running) {
@@ -188,7 +189,7 @@ static void scaled_nf_thread(void) {
 			d2sc_nfrt_scale_init(NF_NAME);
 			
 			cur_cycles = rte_get_tsc_cycles();
-			last_cycles = rte_get_tsc_cycles();
+			last_cycle = rte_get_tsc_cycles();
 			
 			d2sc_nfrt_run_callback(scaled_nf_info, scaled_nf_bq, &packet_handler, &callback_handler);
 			

@@ -50,12 +50,14 @@ void d2sc_pkt_process_rx_batch(struct buf_queue *mgr_bq, struct rte_mbuf *rx_pkt
 	if (mgr_bq == NULL && rx_pkts == NULL)
 		return;
 	
-	/* Each packet needs to looup the flow table, this might hurt performance */	
+	printf("Start to process rx batch\n");
+	/* Each packet needs to lookup the flow table, this might hurt performance */	
 	for (i = 0; i < nb_rx; i++) {
-		meta = (struct d2sc_pkt_meta *) &(rx_pkts[i]->udata64);
+		meta = (struct d2sc_pkt_meta *) &(((struct rte_mbuf*)rx_pkts[i])->udata64);
 		meta->src = 0;
 		meta->sc_index = 0;
 		ret = d2sc_fs_get_entry(rx_pkts[i], &entry);
+		printf("get the entry sucessfully\n");
 		if (ret >= 0) {		// Store the flow table lookup result in packet meta
 			sc = entry->sc;
 			meta->act = d2sc_sc_next_act(sc, rx_pkts[i]);
@@ -68,6 +70,7 @@ void d2sc_pkt_process_rx_batch(struct buf_queue *mgr_bq, struct rte_mbuf *rx_pkt
 		(meta->sc_index)++;
 		d2sc_pkt_enqueue_bq(mgr_bq, meta->dst, rx_pkts[i]);
 	}
+	printf("Finish the rx batch process\n");
 	
 	d2sc_pkt_flush_all_bqs(mgr_bq);
 }
@@ -150,7 +153,7 @@ void d2sc_pkt_process_tx_batch(struct buf_queue *mgr_bq, struct rte_mbuf *tx_pkt
 		return;
 		
 	for (i = 0; i < nb_tx; i++) {
-		meta = (struct d2sc_pkt_meta *) &(tx_pkts[i]->udata64);
+		meta = (struct d2sc_pkt_meta *) &(((struct rte_mbuf*)tx_pkts[i])->udata64);
 		meta->src = nf->inst_id;
 		
 		switch (meta->act) {

@@ -121,8 +121,7 @@ void d2sc_nf_check_status(void) {
 			case MSG_NF_SRV_TIME:
 				d2sc_nf_srv_time(nf_info);
 				break;
-		}
-		
+		}	
 		rte_mempool_put(nf_msg_mp, (void *)nf_msg);
 	}
 }
@@ -171,6 +170,8 @@ inline static int d2sc_nf_start(struct d2sc_nf_info *nf_info) {
 	nfs[nf_id].nf_info = nf_info;
 	nfs[nf_id].inst_id = nf_id;
 	
+
+	
 	// Let the NF continue its init process
 	nf_info->status = NF_STARTING;
 	return 0;
@@ -193,6 +194,12 @@ inline static int d2sc_nf_ready(struct d2sc_nf_info *nf_info) {
 	nfs_per_nt_available[nt_id]++;
 	nts[nt_id][nt_num] = nf_info->inst_id;
 	num_nfs++;
+	printf("Register nf %u successfully\n", nf_info->inst_id);
+	
+	if (nfs[nf_info->inst_id].nf_info->status == NF_RUNNING) {
+		printf("We have mapped the NF to the manager\n");
+	}
+
 	return 0;
 }
 
