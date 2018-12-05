@@ -1,0 +1,1 @@
+/usr/bin/cc      CMakeFiles/d2sc_mgr.dir/main.o CMakeFiles/d2sc_mgr.dir/d2sc_stats.o CMakeFiles/d2sc_mgr.dir/d2sc_init.o CMakeFiles/d2sc_mgr.dir/d2sc_parse.o CMakeFiles/d2sc_mgr.dir/d2sc_nf.o CMakeFiles/d2sc_mgr.dir/d2sc_scale.o  -o d2sc_mgr -rdynamic 

@@ -58,7 +58,7 @@ struct d2sc_ft *d2sc_ft_create(int cnt, int entry_size) {
 	ipv4_hash_params.socket_id = rte_socket_id();
 	snprintf(s, sizeof(s), "d2sc_ft_hash_%d-%"PRIu64, rte_lcore_id(), rte_get_tsc_cycles());
 	hash = rte_hash_create(&ipv4_hash_params);
-	if (hash = NULL)
+	if (hash == NULL)
 		return NULL;
 	
 	table = (struct d2sc_ft *)rte_calloc("flow_table", 1, sizeof(struct d2sc_ft), 0);
@@ -71,7 +71,7 @@ struct d2sc_ft *d2sc_ft_create(int cnt, int entry_size) {
 	table->entry_size = entry_size;
 	
 	table->data = rte_calloc("flow_entry", cnt, entry_size, 0);
-	if (table->data = NULL) {
+	if (table->data == NULL) {
 		rte_hash_free(hash);
 		rte_free(table);
 		return NULL;
@@ -88,9 +88,10 @@ int d2sc_ft_lookup_pkt(struct d2sc_ft *table, struct rte_mbuf *pkt, char **data)
 	if (ret < 0) {
 		return ret;
 	}
-	printf("Start to lookup hash\n");
+//	printf("Start to lookup hash\n");
+//	printf("table = %p\n", table);
 	ft_index = rte_hash_lookup_with_hash(table->hash, (const void *)&key, pkt->hash.rss);
-	printf("Finish the hash lookup");
+//	printf("Finish the hash lookup\n");
 	if (ft_index >= 0) {
 		*data = d2sc_ft_get_data(table, ft_index);
 	}

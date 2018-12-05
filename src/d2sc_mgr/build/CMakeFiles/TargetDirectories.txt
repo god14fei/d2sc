@@ -1,0 +1,1 @@
+/home/feishen/d2sc/src/d2sc_mgr/build/CMakeFiles/d2sc_mgr.dir
