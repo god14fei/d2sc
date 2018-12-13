@@ -151,10 +151,10 @@ struct d2sc_nf {
 	struct d2sc_nf_info *nf_info;
 	uint16_t inst_id;
 
-	uint8_t ol_flag;			// NF overlaod flag
+	uint8_t ol_flag;		// NF overlaod flag
 	uint8_t bk_flag;		// NF block flag
 	uint16_t pkt_rate;		// Packet arrival rate through the NF 
-	uint16_t scale_num;	// The scale number of the NF
+	uint16_t scale_num;		// The scale number of the NF
 	
 	struct buf_queue *nf_bq;
 	uint16_t parent_nf;

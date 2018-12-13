@@ -534,9 +534,9 @@ int d2sc_nfrt_scale_nfs(struct d2sc_nf_info *nf_info, uint16_t num_nfs) {
 	cur_lcore = rte_lcore_id();
 	nfs_lcore = rte_lcore_count() - 2;
 	
-	/* Find the next available lcore to use */
 	RTE_LOG(INFO, NFRT, "Currently running on core %u\n", cur_lcore);
 	for (core = 0, i = 0; core < nfs_lcore && i < num_nfs; core++, i++ ) {
+		/* Find the next available lcore to use */
 		cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
 		state = rte_eal_get_lcore_state(cur_lcore);
 		if (state != RUNNING) {
@@ -548,7 +548,7 @@ int d2sc_nfrt_scale_nfs(struct d2sc_nf_info *nf_info, uint16_t num_nfs) {
 		}
 	}
 	if (nfs_lcore == num_nfs) {
-		RTE_LOG(INFO, NFRT, "All NFs are to scale successfully\n");
+		RTE_LOG(INFO, NFRT, "All child NFs are to scale successfully\n");
 		return 0;
 	} else {
 		RTE_LOG(INFO, NFRT, "No cores available to scale\n");
@@ -714,7 +714,7 @@ static int d2sc_nfrt_start_child(void *arg) {
 	d2sc_nfrt_start_nf(child_info);
 	child_nf = &nfs[child_info->inst_id];
 	child_nf->parent_nf = parent_nf->inst_id;
-	// Child NF inherit specific function from parent NF
+	// Child NF inherits specific function from parent NF
 	child_nf->handler = parent_nf->handler;
 	child_nf->callback = parent_nf->callback;
 	
