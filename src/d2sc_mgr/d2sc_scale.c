@@ -236,9 +236,9 @@ inline static int d2sc_scale_send_msg(uint8_t scale_sig, struct d2sc_scale_info 
 	
 	msg->scale_sig = scale_sig;
 	msg->scale_data = scale_data;
-  if (rte_ring_enqueue(scale_msg_ring, msg) < 0) {
-  	rte_mempool_put(nf_msg_mp, msg);
-  	rte_exit(EXIT_FAILURE, "Cannot send scale message to NF\n");
-  }
-  return 0;
+	if (rte_ring_enqueue(scale_msg_ring, msg) < 0) {
+		rte_mempool_put(nf_msg_mp, msg);
+		rte_exit(EXIT_FAILURE, "Cannot send scale message to NF\n");
+	}
+	return 0;
 }
