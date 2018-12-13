@@ -31,5 +31,3 @@ while getopts ":p:n" opt; do
 done
 
 exec sudo $SCRIPTPATH/build/app/monitor -l $cpu -n 3 --proc-type=secondary -- -t $nt $inst -- $print
-
-

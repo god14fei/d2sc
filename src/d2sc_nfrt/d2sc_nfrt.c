@@ -530,6 +530,7 @@ int d2sc_nfrt_scale_nfs(struct d2sc_nf_info *nf_info, uint16_t num_nfs) {
 	uint16_t i;
 	enum rte_lcore_state_t state;
 	int ret;
+	uint16_t d_nfs = num_nfs;
 	
 	cur_lcore = rte_lcore_id();
 	nfs_lcore = rte_lcore_count() - 2;
@@ -545,13 +546,14 @@ int d2sc_nfrt_scale_nfs(struct d2sc_nf_info *nf_info, uint16_t num_nfs) {
 				RTE_LOG(INFO, NFRT, "Core %u is busy, skipping...\n", core);
 				continue;
 			}
+			d_nfs--;
 		}
 	}
-	if (nfs_lcore == num_nfs) {
+	if (d_nfs == 0) {
 		RTE_LOG(INFO, NFRT, "All child NFs are to scale successfully\n");
 		return 0;
 	} else {
-		RTE_LOG(INFO, NFRT, "No cores available to scale\n");
+		RTE_LOG(INFO, NFRT, "No cores available to scale, remaining %u child NFs\n", d_nfs);
 		return -1;
 	}
 }
