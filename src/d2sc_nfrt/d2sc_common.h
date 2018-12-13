@@ -71,11 +71,6 @@ struct tx_thread {
 	struct pkt_buf *tx_bufs;
 };
 
-//struct scaler_thread {
-//	unsigned block_nfs[MAX_NFS];
-//	unsigned ol_nfs[MAX_NFS];	
-//};
-
 /*
  * The buffer queue used by the manager
  */ 
@@ -121,9 +116,13 @@ struct d2sc_nf_info {
 	uint16_t type_id;
 	uint8_t status;
 	uint16_t srv_time;		// service time of an NF 
-	uint16_t max_load;			// max load of an NF, specified by the provider
+	uint64_t max_load;		// max load of an NF, specified by the provider
 	const char *name;
 };
+
+typedef int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *meta,
+	__attribute__((unused)) struct d2sc_nf_info *nf_info);
+typedef int(*cbk_handler)(__attribute__((unused)) struct d2sc_nf_info *nf_info);
 
 /* 
  *The structure with states from the NFs
@@ -155,6 +154,14 @@ struct d2sc_nf {
 	uint8_t ol_flag;			// NF overlaod flag
 	uint8_t bk_flag;		// NF block flag
 	uint16_t pkt_rate;		// Packet arrival rate through the NF 
+	uint16_t scale_num;	// The scale number of the NF
+	
+	struct buf_queue *nf_bq;
+	uint16_t parent_nf;
+	
+	/* NF specific function */
+	pkt_handler handler;
+	cbk_handler callback;
 	
 	volatile struct stats stats;
 };

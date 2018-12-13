@@ -35,8 +35,18 @@ uint16_t d2sc_sc_nt_to_nf_map(uint16_t type_id, struct rte_mbuf *pkt) {
 		
 	if (pkt == NULL)
 		return 0;
-		
-	uint16_t inst_index = pkt->hash.rss % num_nfs_available;
+	
+	static uint16_t cur_index = 0;
+	uint16_t inst_index;
+	
+	/* Keep the traffic balanced through all available NFs */
+	if (cur_index < num_nfs_available) {
+		inst_index = pkt->hash.rss % (++cur_index);
+	} else {
+		cur_index = 0;
+		inst_index = pkt->hash.rss % (++cur_index);	
+	}	
+
 	uint16_t inst_id = nts[type_id][inst_index];
 	
 	return inst_id;
@@ -69,7 +79,7 @@ int d2sc_sc_set_entry(struct d2sc_sc *sc, uint8_t index, uint8_t act, uint16_t d
 
 void d2sc_sc_print(struct d2sc_sc *sc) {
 	uint8_t i;
-	for (i = 0; i < sc->sc_len; i++) {
+	for (i = 1; i <= sc->sc_len; i++) {
 		printf("curent_index: %"PRIu8", action: %"PRIu8", destination: %"PRIu16"\n",
 			i, sc->sc_entry[i].act, sc->sc_entry[i].dst);
 	}

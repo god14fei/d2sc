@@ -83,6 +83,7 @@ void d2sc_pkt_enqueue_bq(struct buf_queue *mgr_bq, uint16_t dst_nt_id, struct rt
 		
 	// map nf type to instance and check one exists
 	dst_nf_id = d2sc_sc_nt_to_nf_map(dst_nt_id, pkt);
+	
 	if (dst_nf_id == 0) {
 		d2sc_pkt_drop(pkt);
 		return;

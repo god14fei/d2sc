@@ -27,7 +27,7 @@ struct d2sc_scale_info {
 		uint16_t type_id;
 		uint16_t inst_id;
 	};
-	const char *name;
+	uint16_t scale_num;
 };
 
 struct d2sc_scale_msg {
@@ -42,7 +42,7 @@ void d2sc_scale_check_overload(void);
 
 void d2sc_scale_up_signal(void);
 
-void d2sc_scale_up_execute(uint16_t dst_type);
+void d2sc_scale_up_execute(uint16_t nf_id);
 
 void d2sc_scale_block_signal(void);
 

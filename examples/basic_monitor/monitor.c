@@ -36,11 +36,11 @@
 
 /* Struct that contains information about this NF */
 struct d2sc_nf_info *nf_info;
-struct d2sc_nf_info *scaled_nf_info;
+//struct d2sc_nf_info *scaled_nf_info;
 
 // buffer used for NFs that handle TX. May not be used
-struct buf_queue *nf_bq;
-struct buf_queue *scaled_nf_bq;
+//struct buf_queue *nf_bq;
+//struct buf_queue *scaled_nf_bq;
 
 /* number of package between each print */
 static uint32_t print_delay = 1000000;
@@ -128,7 +128,7 @@ do_stats_display(struct rte_mbuf* pkt) {
 }
 
 static int
-callback_handler(void) {
+callback_handler(__attribute__((unused)) struct d2sc_nf_info *nf_info) {
 	cur_cycles = rte_get_tsc_cycles();
 
 	if (((cur_cycles - last_cycle) / rte_get_timer_hz()) > 5) {
@@ -140,7 +140,7 @@ callback_handler(void) {
 }
 
 static int
-packet_handler(struct rte_mbuf* pkt, struct d2sc_pkt_meta* meta) {
+packet_handler(struct rte_mbuf* pkt, struct d2sc_pkt_meta* meta, __attribute__((unused)) struct d2sc_nf_info *nf_info) {
 	static uint32_t counter = 0;
 	total_packets++;
 	if (++counter == print_delay) {
@@ -164,41 +164,16 @@ static void d2sc_handle_signal(int sig)
 		non_blocking = 0;
 }
 
-static void master_nf_thread(void) {
-	RTE_LOG(INFO, NF, "Core %d: Runnning initial NF thread\n", rte_lcore_id());
-	
-	cur_cycles = rte_get_tsc_cycles();
-	last_cycle = rte_get_tsc_cycles();
-	
-	d2sc_nfrt_run_callback(nf_info, nf_bq, &packet_handler, &callback_handler);
-	
-	// Stop the scaling thread
-	scaler_keep_running = 0;
-	
-	printf("If we reach here, initial NF is ending\n");
-}
-
 static int  scaled_nf_thread(void *arg) {
-	RTE_LOG(INFO, NF, "Core %d: Runnning scaled NF thread\n", rte_lcore_id());
+	RTE_LOG(INFO, NF, "Core %d: Runnning scaling thread\n", rte_lcore_id());
 	
 	while (scaler_keep_running) {
 		// Keep checking whether this NF needs to scale
-		if (d2sc_nfrt_check_scale_msg(nf_info) == SCALE_UP) {
-			RTE_LOG(INFO, NF, "Scaling message checked, start to perform scaling for NF %u\n", nf_info->inst_id);
-			
-			d2sc_nfrt_scale_init(NF_NAME);
-			
-			cur_cycles = rte_get_tsc_cycles();
-			last_cycle = rte_get_tsc_cycles();
-			
-			d2sc_nfrt_run_callback(scaled_nf_info, scaled_nf_bq, &packet_handler, &callback_handler);
-			
-			printf("If we reach here, scaled NF is ending\n");
-		}
+		d2sc_nfrt_check_scale_msg(nf_info);
 	}
 	
+	return 0;
 }
-
 
 int main(int argc, char *argv[]) {
 	int arg_offset;
@@ -212,7 +187,7 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, d2sc_handle_signal);
 	signal(SIGTERM, d2sc_handle_signal);
 	
-	if ((arg_offset = d2sc_nfrt_init(argc, argv, NF_NAME)) < 0)
+	if ((arg_offset = d2sc_nfrt_init(argc, argv, NF_NAME, &nf_info)) < 0)
 		return -1;
 	argc -= arg_offset;
 	argv += arg_offset;
@@ -224,11 +199,21 @@ int main(int argc, char *argv[]) {
 	
 	cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
 	if (rte_eal_remote_launch(scaled_nf_thread, NULL, cur_lcore) == -EBUSY) {
-		RTE_LOG(ERR, MGR, "Core %d is already busy, cannot use for NF scaled thread", cur_lcore);
+		RTE_LOG(ERR, NF, "Core %d is already busy, cannot use for NF scaled thread", cur_lcore);
 		return -1;
 	}
 	
-	master_nf_thread();
+	RTE_LOG(INFO, NF, "Core %d: Runnning initial thread\n", rte_lcore_id());
+	
+	cur_cycles = rte_get_tsc_cycles();
+	last_cycle = rte_get_tsc_cycles();
+	
+	d2sc_nfrt_run_callback(nf_info, &packet_handler, &callback_handler);
+	
+	// Stop the scaling thread
+	scaler_keep_running = 0;
+	
+	printf("If we reach here, initial NF is ending\n");
 	
 	return 0;
 }

@@ -33,6 +33,7 @@ struct rte_mempool *pktmbuf_mp;
 struct rte_mempool *nf_info_mp;
 struct rte_mempool *nf_msg_mp;
 uint16_t **nts;
+//uint16_t **nts_available;
 uint16_t *nfs_per_nt_num;
 uint16_t *nfs_per_nt_available;		// Number of available NFs per NF type, i.e., not overloaded
 struct d2sc_sc *default_sc;
@@ -123,6 +124,7 @@ int init(int argc, char *argv[]) {
 	const struct rte_memzone *mz_port;
 	const struct rte_memzone *mz_scp;
 	const struct rte_memzone *mz_nts;
+//	const struct rte_memzone *mz_nts_available;
 	const struct rte_memzone *mz_nfs_per_nt;
 	const struct rte_memzone *mz_nt_available;
 	uint8_t i, n_ports, port_id;
@@ -163,10 +165,20 @@ int init(int argc, char *argv[]) {
 		rte_exit(EXIT_FAILURE, "Cannot reserve memzone for nf type information.\n");
 	else {
 		nts = mz_nts->addr;
-		for (i=0; i < num_nts; i++) {
+		for (i = 0; i < num_nts; i++) {
 			nts[i] = rte_calloc("NF instances of one type", MAX_NFS_PER_NT, sizeof(uint16_t), 0);
 		}
 	}
+	
+//	mz_nts_available = rte_memzone_reserve(MZ_NTS_AVAILABLE_INFO, sizeof(uint16_t) * num_nts, rte_socket_id, NO_FLAGS);
+//	if (mz_nts_available == NULL)
+//		rte_exit(EXIT_FAILURE, "Cannot reserve memzone for nf type available information.\n");
+//	else {
+//		nts_available = mz_nts_available->addr;
+//		for (i=0; i < num_nts; i++) {
+//			nts_available[i] = rte_calloc("Available NFs of one type", MAX_NFS_PER_NT, sizeof(uint16_t), 0);
+//		}
+//	}
 	
 	/* set up memory zone for nfs per nf types info */
 	mz_nfs_per_nt = rte_memzone_reserve(MZ_NFS_PER_NT_INFO, sizeof(uint16_t) * num_nts, rte_socket_id(), NO_FLAGS);
@@ -419,6 +431,7 @@ init_shm_rings(void) {
 		nfs[i].ol_flag = 0;		// preset the overload flag to 0, no overload
 		nfs[i].bk_flag = 0;		// preset the block flag to 0, non_block
 		nfs[i].pkt_rate = 0;	// initialize the pkt rate of all NFs
+		nfs[i].scale_num = 0;	// preset the scale number of all NFs
 		nfs[i].rx_q = rte_ring_create(rxq_name, ring_size,
 					socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
 		nfs[i].tx_q = rte_ring_create(txq_name, ring_size,

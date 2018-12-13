@@ -100,25 +100,30 @@ void d2sc_nf_check_status(void) {
 	
 	for (i = 0; i < nb_msgs; i++) {
 		nf_msg = (struct d2sc_nf_msg *) msgs[i];
-		nf_info = (struct d2sc_nf_info *) nf_msg->msg_data;
 		switch (nf_msg->msg_type) {
 			case MSG_NF_STARTING:
+				nf_info = (struct d2sc_nf_info *) nf_msg->msg_data;
 				d2sc_nf_start(nf_info);
 				break;
 			case MSG_NF_READY:
+				nf_info = (struct d2sc_nf_info *) nf_msg->msg_data;
 				d2sc_nf_ready(nf_info);
 				break;
 			case MSG_NF_STOPPING:
+				nf_info = (struct d2sc_nf_info *) nf_msg->msg_data;
 				if (!d2sc_nf_stop(nf_info))
 					num_nfs--;
 				break;
 			case MSG_NF_BLOCKING:
+				nf_info = (struct d2sc_nf_info *) nf_msg->msg_data;
 				d2sc_nf_block(nf_info);
 				break;
 			case MSG_NF_RUNNING:
+				nf_info = (struct d2sc_nf_info *) nf_msg->msg_data;
 				d2sc_nf_run(nf_info);
 				break;
 			case MSG_NF_SRV_TIME:
+				nf_info = (struct d2sc_nf_info *) nf_msg->msg_data;
 				d2sc_nf_srv_time(nf_info);
 				break;
 		}	
@@ -170,8 +175,6 @@ inline static int d2sc_nf_start(struct d2sc_nf_info *nf_info) {
 	nfs[nf_id].nf_info = nf_info;
 	nfs[nf_id].inst_id = nf_id;
 	
-
-	
 	// Let the NF continue its init process
 	nf_info->status = NF_STARTING;
 	return 0;
@@ -194,12 +197,7 @@ inline static int d2sc_nf_ready(struct d2sc_nf_info *nf_info) {
 	nfs_per_nt_available[nt_id]++;
 	nts[nt_id][nt_num] = nf_info->inst_id;
 	num_nfs++;
-	printf("Register nf %u successfully\n", nf_info->inst_id);
 	
-	if (nfs[nf_info->inst_id].nf_info->status == NF_RUNNING) {
-		printf("We have mapped the NF to the manager\n");
-	}
-
 	return 0;
 }
 
@@ -242,6 +240,24 @@ inline static int d2sc_nf_stop(struct d2sc_nf_info *nf_info) {
 		}
 	}
 	
+	/* Remove this NF from the NF available map */
+//	for (match_id = 0; match_id < MAX_NFS_PER_NT; match_id++) {
+//		if (nts_available[nt_id][match_id] == nf_id) {
+//			break;
+//		}
+//	}
+//	
+//	if (match_id < MAX_NFS_PER_NT) {
+//		nts_available[nt_id][match_id] = 0;
+//		for (; match_id < MAX_NFS_PER_NT - 1; match_id++) {
+//			if (nts_available[nt_id][match_id+1] == 0) {
+//				break;
+//			}
+//			nts_available[nt_id][match_id] = nts_available[nt_id][match_id+1];
+//			nts_available[nt_id][match_id+1] = 0;
+//		}
+//	}
+	
 	/* First lookup mempool for nf_info struct, then free this nf_info struct */
 	nf_info_mp = rte_mempool_lookup(MP_NF_INFO_NAME);
 	if (nf_info_mp == NULL)
@@ -263,7 +279,7 @@ inline static int d2sc_nf_block(struct d2sc_nf_info *nf_info) {
 	nt_id = nf_info->type_id;
 	// available NFs of this type minus 1
 	nfs_per_nt_available[nt_id]--;
-	nfs[nf_id].nf_info = nf_info;
+	nfs[nf_id].nf_info->status = nf_info->status;
 	return 0;
 }
 
@@ -290,6 +306,7 @@ inline static int d2sc_nf_srv_time(struct d2sc_nf_info *nf_info) {
 	
 	nf_id = nf_info->inst_id;
 	/* Deliver the nf info with srv time to global nfs */
-	nfs[nf_id].nf_info = nf_info;		
+	nfs[nf_id].nf_info->srv_time = nf_info->srv_time;
+			
 	return 0;	
 }

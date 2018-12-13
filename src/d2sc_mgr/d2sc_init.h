@@ -87,6 +87,7 @@ extern uint16_t num_nts;
 extern uint16_t default_nt;
 extern uint16_t num_rx_threads;
 extern uint16_t **nts;
+//extern uint16_t **nts_available;
 extern uint16_t *nfs_per_nt_num;
 extern uint16_t *nfs_per_nt_available;
 extern unsigned num_sockets;

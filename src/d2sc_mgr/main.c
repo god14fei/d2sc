@@ -142,12 +142,12 @@ static int scale_thread_main(void *arg) {
 		d2sc_scale_check_overload();
 		d2sc_scale_up_signal();
 		if (up_signal == 1) {
-			for (i = 0; i < num_nts; i++) {
-				if (nfs_per_nt_num[i] == 0)
+			for (i = 0; i < MAX_NFS; i++) {
+				if (!d2sc_nf_is_valid(&nfs[i]))
 					continue;
 				
-				if (nfs_per_nt_available[i] ==0) {	
-					RTE_LOG(INFO, MGR, "Core %d: Notifying NF type %"PRIu16" to scale up\n", rte_lcore_id(), i);
+				if (nfs[i].scale_num != 0) {	
+					RTE_LOG(INFO, MGR, "Core %d: Notifying NF %"PRIu16" to scale up\n", rte_lcore_id(), i);
 					d2sc_scale_up_execute(i);
 				}
 			}

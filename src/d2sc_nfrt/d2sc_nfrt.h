@@ -20,18 +20,22 @@
 
 /************************************API**************************************/
 
-int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name);
+static int d2sc_nfrt_init_premises(int argc, char *argv[]);
 
 
-int d2sc_nfrt_scale_init(const char *nf_name);
+static int d2sc_nfrt_start_nf(struct d2sc_nf_info *nf_info);
 
 
-int d2sc_nfrt_run_callback(struct d2sc_nf_info *info, struct buf_queue *bq, 
-	int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *meta), int(*callback_handler)(void));
+int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name, struct d2sc_nf_info **nf_info_p);
 
 
-int d2sc_nfrt_run(struct d2sc_nf_info *info, struct buf_queue *bq, 
-	int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *act));
+int d2sc_nfrt_run_callback(struct d2sc_nf_info *info, 
+	int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *meta, __attribute__((unused)) struct d2sc_nf_info *nf_info), 
+	int(*cbk_handler)(__attribute__((unused)) struct d2sc_nf_info *nf_info));
+
+
+int d2sc_nfrt_run(struct d2sc_nf_info *info,
+	int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *act, __attribute__((unused)) struct d2sc_nf_info *nf_info));
 
 
 int d2sc_nfrt_ret_pkt(struct rte_mbuf *pkt, struct d2sc_nf_info *info);
@@ -43,12 +47,14 @@ int d2sc_nfrt_nf_ready(struct d2sc_nf_info *info);
 int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg);
 
 
-uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info);
+void d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info);
 
 
 void d2sc_nfrt_stop(struct d2sc_nf_info *info);
 
+
 void d2sc_nfrt_scale_block(struct d2sc_nf_info *info);
+
 
 void d2sc_nfrt_scale_run(struct d2sc_nf_info *info);
 
@@ -63,6 +69,9 @@ void d2sc_nfrt_scale_run(struct d2sc_nf_info *info);
 
 
 struct d2sc_sc *d2sc_nfrt_get_default_sc(void);
+
+
+int d2sc_nfrt_scale_nfs(struct d2sc_nf_info *nf_info, uint16_t num_nfs);
 
 
 #endif	// _D2SC_NFRT_H_

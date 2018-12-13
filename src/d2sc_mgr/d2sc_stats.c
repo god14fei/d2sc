@@ -127,8 +127,8 @@ static void d2sc_stats_display_ports(unsigned stime) {
 		rx_pps = (rx_pkts - rx_last[i]) / stime;
 		tx_pps = (tx_pkts - tx_last[i]) / stime;
 		
-		fprintf(stats_out, "Port %u - rx: %9"PRIu64"  (%9"PRIu64" pps)\t"
-		"tx: %9"PRIu64"  (%9"PRIu64" pps)\n", (unsigned)ports->id[i], rx_pkts, rx_pps, tx_pkts, tx_pps);
+		fprintf(stats_out, "Port %u - rx: %13"PRIu64"  (%13"PRIu64" pps)\t"
+		"tx: %13"PRIu64"  (%13"PRIu64" pps)\n", (unsigned)ports->id[i], rx_pkts, rx_pps, tx_pkts, tx_pps);
 		
 		rx_last[i] = rx_pkts;
 		tx_last[i] = tx_pkts;
@@ -168,17 +168,19 @@ static void d2sc_stats_display_nfs(unsigned stime) {
 		const uint64_t rx_drop_rate = (rx_drop - rx_drop_last[i]) / stime;
 		const uint64_t tx_drop_rate = (tx_drop - tx_drop_last[i]) / stime;
 		
-		fprintf(stats_out, "NF %2u - rx: %9"PRIu64" rx_drop: %9"PRIu64" next: %9"PRIu64" drop: %9"PRIu64" ret: %9"PRIu64"\n"
-			"	tx: %9"PRIu64" tx_drop: %9"PRIu64" out:  %9"PRIu64" tonf: %9"PRIu64" buf: %9"PRIu64" \n",
+		fprintf(stats_out, "NF %2u - rx: %13"PRIu64" rx_drop: %13"PRIu64" next: %13"PRIu64" drop: %13"PRIu64" ret: %13"PRIu64"\n"
+			"	tx: %13"PRIu64" tx_drop: %13"PRIu64" out:  %13"PRIu64" tonf: %13"PRIu64" buf: %13"PRIu64" \n"
+			" \trx_pps: %9"PRIu64" rx_drop_rate: %8"PRIu64" tx_pps:   %9"PRIu64" tx_drop_rate:  %9"PRIu64"\n",
 			nfs[i].nf_info->inst_id, rx, rx_drop, act_next, act_drop, tx_ret,
-			tx, tx_drop, act_out, act_tonf, tx_buf);
+			tx, tx_drop, act_out, act_tonf, tx_buf,
+			rx_pps, rx_drop_rate, tx_pps, tx_drop_rate);
 			
 		rx_last[i] = rx;
 		tx_last[i] = tx;
 		rx_drop_last[i] = rx_drop;
 		tx_drop_last[i] = tx_drop;
 		
-		nfs[i].pkt_rate = rx_pps / 1000000;	// Reserve the instantaneous packet rate (Mpps) in order to compute the load	 
+		nfs[i].pkt_rate = ceil(rx_pps / 100000);	// Reserve the instantaneous packet rate (0.1Mpps) in order to compute the load	 
 	}
 	
 	fprintf(stats_out, "\n");

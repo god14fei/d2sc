@@ -32,10 +32,7 @@
 
 
 #define D2SC_NO_CALLBACK NULL
-#define MAX_LOAD 500
-
-typedef int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *meta);
-typedef int(*callback_handler)(void);
+#define MAX_LOAD 300
 
 
 /******************************Global Variables*******************************/
@@ -49,17 +46,10 @@ static struct rte_ring *new_msg_queue;
 // ring sued for manager sending scale msg to nfs
 static struct rte_ring *scale_msg_queue;
 
-// rings used to pass pkts between NFRT and Manager
-//static struct rte_ring *tx_ring, *rx_ring;
-//static struct rte_ring *scaled_tx_ring, *scaled_rx_ring;
-
-// ring used for manager sending msg to NFs
-//static struct rte_ring *nf_msg_ring;
-//static struct rte_ring *scaled_nf_msg_ring;
 
 // buffer used for NFs that handle TX. May not be used
-extern struct buf_queue *nf_bq;
-extern struct buf_queue *scaled_nf_bq;
+//extern struct buf_queue *nf_bq;
+//extern struct buf_queue *scaled_nf_bq;
 
 // Shared data from manger, through shared memzone. We update statistics here
 struct d2sc_nf *nfs;
@@ -69,9 +59,9 @@ uint16_t **nts;
 uint16_t *nfs_per_nt_num;
 uint16_t *nfs_per_nt_available;
 
-// Shared data for NF info
-extern struct d2sc_nf_info *nf_info;
-extern struct d2sc_nf_info *scaled_nf_info;
+//// Shared data for NF info
+//extern struct d2sc_nf_info *nf_info;
+//extern struct d2sc_nf_info *scaled_nf_info;
 
 // Shared mempool for all NFs info
 static struct rte_mempool *nf_info_mp;
@@ -101,11 +91,11 @@ static int d2sc_nfrt_parse_args(int argc, char *argv[]);
 
 static void d2sc_nfrt_usage(const char *progname);
 
-//static void d2sc_nfrt_handle_signal(int sig);
+static void d2sc_nfrt_handle_signal(int sig);
 
 static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name);
 
-static void d2sc_nfrt_nf_bq_init(struct buf_queue **bq);
+static void d2sc_nfrt_nf_bq_init(struct d2sc_nf *nf);
 
 static inline uint16_t 
 d2sc_nfrt_dequeue_pkts(void **pkts, struct d2sc_nf_info *info, pkt_handler handler);
@@ -115,10 +105,11 @@ d2sc_nfrt_dequeue_new_msgs(struct rte_ring *msg_ring);
 
 static inline int d2sc_nfrt_nf_srv_time(struct d2sc_nf_info *info);
 
+static int d2sc_nfrt_start_child(void *arg);
 
 /************************************API**************************************/
 
-int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
+static int d2sc_nfrt_init_premises(int argc, char *argv[]) {
 	const struct rte_memzone *mz_nf;
 	const struct rte_memzone *mz_port;
 	const struct rte_memzone *mz_scp;
@@ -127,33 +118,11 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 	const struct rte_memzone *mz_nt_available;
 	struct rte_mempool *mp_pkt;
 	struct d2sc_sc **scp;
-	struct d2sc_nf_msg *start_msg;
-	int ret_eal, ret_parse, ret_final;
+	
+	int ret_eal;
 	
 	if ((ret_eal = rte_eal_init(argc, argv)) < 0)
 		return -1;
-		
-	argc -= ret_eal;
-	argv += ret_eal;
-	
-	/* Reset getopt global variables opterr and optind to their default values */
-	opterr = 0; optind = 1;
-	
-	if ((ret_parse = d2sc_nfrt_parse_args(argc, argv)) < 0)
-		rte_exit(EXIT_FAILURE, "Invalid command-line arguments\n");
-		
-	/*
-	 * Calculate the offset that the nf will use to modify argc and argv for its
-	 * getopt call. This is the sum of the number of arguments parsed by
-	 * rte_eal_init and parse_nflib_args. This will be decremented by 1 to assure
-	 * getopt is looking at the correct index since optind is incremented by 1 each
-	 * time "--" is parsed.
-	 * This is the value that will be returned if initialization succeeds.
-	 */
-	ret_final = (ret_eal + ret_parse) - 1;
-	
-	/* Reset getopt global variables opterr and optind to their default values */
-	opterr = 0; optind = 1;
 	
 	/* Lookup mempool for nf_info struct */
 	nf_info_mp = rte_mempool_lookup(MP_NF_INFO_NAME);
@@ -164,12 +133,6 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 	nf_msg_pool = rte_mempool_lookup(MP_NF_MSG_NAME);
 	if (nf_msg_pool == NULL)
 		rte_exit(EXIT_FAILURE, "No NF msg mempool found\n");
-		
-	/* Initialize the info struct */
-	nf_info = d2sc_nfrt_info_init(nf_name);
-	
-	/* Initialize empty NF's buffer queue */
-	d2sc_nfrt_nf_bq_init(&nf_bq);
 	
 	mp_pkt = rte_mempool_lookup(MP_PKTMBUF_NAME);
 	if (mp_pkt == NULL)
@@ -217,6 +180,12 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 	if (scale_msg_queue == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get scale msg ring\n");
 		
+	return ret_eal;
+}
+
+static int d2sc_nfrt_start_nf(struct d2sc_nf_info *nf_info) {
+	struct d2sc_nf_msg *start_msg;
+		
 	/* Put this NF's info struct into nf msg pool for Manager to process startup */
 	if (rte_mempool_get(nf_msg_pool, (void **)(&start_msg)) != 0) {
 		rte_mempool_put(nf_info_mp, nf_info);	// give back memory to mempool obtained in NF init function
@@ -252,86 +221,71 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name) {
 	RTE_LOG(INFO, NFRT, "Using Instance ID %d\n", nf_info->inst_id);
 	RTE_LOG(INFO, NFRT, "Using Type ID %d\n", nf_info->type_id);
 	
-	/* Now, map rx and tx rings into NF space */
-//	rx_ring = rte_ring_lookup(get_rx_queue_name(nf_info->inst_id));
-//	if (rx_ring == NULL) 
-//		rte_exit(EXIT_FAILURE, "Cannot get RX ring - is manager process running?\n");
-//	tx_ring = rte_ring_lookup(get_tx_queue_name(nf_info->inst_id));
-//	if (tx_ring == NULL) 
-//		rte_exit(EXIT_FAILURE, "Cannot get TX ring - is manager process running?\n");
-//	nf_msg_ring = rte_ring_lookup(get_msg_queue_name(nf_info->inst_id));
-//	if (nf_msg_ring == NULL) 
-//		rte_exit(EXIT_FAILURE, "Cannot get NF msg ring\n");
+	/* Initialize empty NF's buffer queue */
+	d2sc_nfrt_nf_bq_init(&nfs[nf_info->inst_id]);
+	
+	/* Set the parent id to zero */
+	nfs[nf_info->inst_id].parent_nf = 0;
 		
 	/* Tell the manger, this NF is ready to receive packets */
 	keep_running = 1;
 	
 	RTE_LOG(INFO, NFRT, "Finished process init.\n");
-	return ret_final;
-}
-
-int d2sc_nfrt_scale_init(const char *nf_name) {
-	struct d2sc_nf_msg *start_msg;
 	
-	/* Initialize the info struct */
-	scaled_nf_info = d2sc_nfrt_info_init(nf_name);
-	
-	/* Initialize empty scaled NF's buffer queue */
-	d2sc_nfrt_nf_bq_init(&scaled_nf_bq);
-	
-	d2sc_sc_print(default_sc);
-	
-	/* Put this NF's info struct into nf msg pool for Manager to process startup */
-	if (rte_mempool_get(nf_msg_pool, (void **)(&start_msg)) != 0) {
-		rte_mempool_put(nf_info_mp, scaled_nf_info);	// give back memory to mempool obtained in NF init function
-		rte_exit(EXIT_FAILURE, "Cannot create starup msg\n");
-	}
-	
-	start_msg->msg_type = MSG_NF_STARTING;
-	start_msg->msg_data = scaled_nf_info;
-	
-	/* Wait for an NF ID to be assigned by the manager */
-	RTE_LOG(INFO, NFRT, "Waiting for manager to assign an ID...\n");
-	for (; scaled_nf_info->status == (uint16_t)NF_WAITTING_FOR_ID; ) {
-		sleep(1);
-	}
-	
-	/* This NF is trying to declare an ID already in use. */
-	if (scaled_nf_info->status == NF_ID_CONFLICT) {
-		rte_mempool_put(nf_info_mp, scaled_nf_info);
-		rte_exit(NF_ID_CONFLICT, "Selected ID already in use. Exiting...\n");
-	} else if (scaled_nf_info->status == NF_NO_IDS) {
-		rte_mempool_put(nf_info_mp, scaled_nf_info);
-		rte_exit(NF_NO_IDS, "There are no ids available for this scaling NF\n");
-	} else if (scaled_nf_info->status != NF_STARTING) {
-		rte_mempool_put(nf_info_mp, scaled_nf_info);
-		rte_exit(EXIT_FAILURE, "Error occurred during manager initialization\n");
-	}
-	RTE_LOG(INFO, NFRT, "Using Instance ID %d\n", scaled_nf_info->inst_id);
-	RTE_LOG(INFO, NFRT, "Using Type ID %d\n", scaled_nf_info->type_id);
-	
-//	/* Now, map rx and tx rings into NF space */
-//	scaled_rx_ring = rte_ring_lookup(get_rx_queue_name(scaled_nf_info->inst_id));
-//	if (scaled_rx_ring == NULL) 
-//		rte_exit(EXIT_FAILURE, "Cannot get scaled RX ring - is manager process running?\n");
-//	scaled_tx_ring = rte_ring_lookup(get_tx_queue_name(scaled_nf_info->inst_id));
-//	if (scaled_tx_ring == NULL) 
-//		rte_exit(EXIT_FAILURE, "Cannot get scalded TX ring - is manager process running?\n");
-//	scaled_nf_msg_ring = rte_ring_lookup(get_msg_queue_name(scaled_nf_info->inst_id));
-//	if (scaled_nf_msg_ring == NULL) 
-//		rte_exit(EXIT_FAILURE, "Cannot get NF msg ring\n");
-		
-	RTE_LOG(INFO, NFRT, "Finished process scale init.\n");
 	return 0;
 }
 
 
-int d2sc_nfrt_run_callback(struct d2sc_nf_info *info, struct buf_queue *bq, pkt_handler handler, 
-callback_handler callback) {
+int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name, struct d2sc_nf_info **nf_info_p) {
+	struct d2sc_nf_info *nf_info;
+	int ret_eal, ret_parse, ret_final;
+	
+	/* Init the nfrt premises, including dpdk and shared memory init */
+	ret_eal = d2sc_nfrt_init_premises(argc, argv);
+	
+	argc -= ret_eal;
+	argv += ret_eal;
+	
+	/* Reset getopt global variables opterr and optind to their default values */
+	opterr = 0; optind = 1;
+	
+	if ((ret_parse = d2sc_nfrt_parse_args(argc, argv)) < 0)
+		rte_exit(EXIT_FAILURE, "Invalid command-line arguments\n");
+		
+	/*
+	 * Calculate the offset that the nf will use to modify argc and argv for its
+	 * getopt call. This is the sum of the number of arguments parsed by
+	 * rte_eal_init and parse_nflib_args. This will be decremented by 1 to assure
+	 * getopt is looking at the correct index since optind is incremented by 1 each
+	 * time "--" is parsed.
+	 * This is the value that will be returned if initialization succeeds.
+	 */
+	ret_final = (ret_eal + ret_parse) - 1;
+	
+	/* Reset getopt global variables opterr and optind to their default values */
+	opterr = 0; optind = 1;
+	
+	/* Initialize the info struct */
+	nf_info = d2sc_nfrt_info_init(nf_name);
+	*nf_info_p = nf_info;
+	
+	d2sc_nfrt_start_nf(nf_info);
+	
+	return ret_final;
+}
+
+
+int d2sc_nfrt_run_callback(struct d2sc_nf_info *info, pkt_handler handler, 
+cbk_handler callback) {
 	struct rte_mbuf *pkts[PKT_RD_SIZE];
+	struct d2sc_nf *nf;
 	int ret;
-	uint16_t nb_pkts;
-	static uint16_t srv_time_flag = 0;
+	uint16_t nb_pkts, i;
+	static uint8_t srv_time_flag = 0;
+	
+	nf = &nfs[info->inst_id];
+	nf->handler = handler;
+	nf->callback = callback;
 	
 	static uint64_t last_cycle;
 	static uint64_t cur_cycles;
@@ -339,8 +293,8 @@ callback_handler callback) {
 	printf("\n NF %d handling packets\n", info->inst_id);
 	
 	/* Listen for ^C and docker stop so we can exit gracefully */
-//	signal(SIGINT, d2sc_nfrt_handle_signal);
-//	signal(SIGTERM, d2sc_nfrt_handle_signal);
+	signal(SIGINT, d2sc_nfrt_handle_signal);
+	signal(SIGTERM, d2sc_nfrt_handle_signal);
 	
 	printf("Sending NF_READY message to manager...\n");
 	ret = d2sc_nfrt_nf_ready(info);
@@ -353,35 +307,40 @@ callback_handler callback) {
 			nb_pkts = d2sc_nfrt_dequeue_pkts((void **)pkts, info, handler);
 		
 			if (likely(nb_pkts > 0)) {
-				d2sc_pkt_process_tx_batch(bq, pkts, nb_pkts, &nfs[info->inst_id]);
+				d2sc_pkt_process_tx_batch(nf->nf_bq, pkts, nb_pkts, nf);
 			}
 			
 			/* Flush the packet buffers */
-			d2sc_pkt_enqueue_tx_ring(bq->tx_buf, info->inst_id);
-			d2sc_pkt_flush_all_bqs(bq);
+			d2sc_pkt_enqueue_tx_ring(nf->nf_bq->tx_buf, info->inst_id);
+			d2sc_pkt_flush_all_bqs(nf->nf_bq);
 		
-			d2sc_nfrt_dequeue_new_msgs(nfs[info->inst_id].msg_q);
+			d2sc_nfrt_dequeue_new_msgs(nf->msg_q);
 		
 			if (callback != D2SC_NO_CALLBACK) {
-				keep_running = !(*callback)() && keep_running;
+				keep_running = !(*callback)(info) && keep_running;
 			}
-			cur_cycles = rte_get_tsc_cycles();
-			info->srv_time = (cur_cycles - last_cycle) / rte_get_timer_hz();
-			last_cycle = cur_cycles;
 			
-			if (srv_time_flag = 0) {
+			if (srv_time_flag == 0) {
+				// Compute the service time 
+				cur_cycles = rte_get_tsc_cycles();
+				info->srv_time = (cur_cycles - last_cycle) * 1000000 / rte_get_timer_hz();
+				//last_cycle = cur_cycles;
+				printf("Computed service time = %u us\n", info->srv_time);
 				/* Send nf srv_time msg to manager */
-				printf("Start to compute the service time\n");
 				ret = d2sc_nfrt_nf_srv_time(info);
 				if (ret != 0) {
 					rte_exit(EXIT_FAILURE, "Unable to send nf service time msg to manager\n");
 				}
 				srv_time_flag = 1;
 			}
-			
 		}
 	}
 	
+	/* Wait for child nf to quit */
+	for (i = 0; i < MAX_NFS; i++) 
+		while (nfs[i].nf_info != NULL && nfs[i].parent_nf == info->inst_id)
+			sleep(1);
+			
 	// Stop and free
 	d2sc_nfrt_stop(info);
 	
@@ -423,39 +382,39 @@ int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg) {
 }
 
 
-uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
+void d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 	int i;
 	void *msgs[MAX_NTS];
 	struct d2sc_scale_msg *msg;	
 	struct d2sc_scale_info *scale_info;
-	uint8_t scale_sig = SCALE_NO;
 	int num_msgs = rte_ring_count(scale_msg_queue);
 	
-	if (num_msgs == 0) return SCALE_NO;
+	if (num_msgs == 0) return;
 		
 	if (rte_ring_dequeue_bulk(scale_msg_queue, msgs, num_msgs, NULL) == 0)
-		return -1;
+		return;
 		
 	for (i = 0; i < num_msgs; i++) {
-		msg = (struct d2sc_scale_msg *)msgs[i];
-		scale_info = (struct d2sc_scale_info *)msg->scale_data;
+		msg = (struct d2sc_scale_msg *) msgs[i];
 		
 		switch (msg->scale_sig) {
 			case SCALE_UP:
-				if (scale_info->type_id == nf_info->type_id) {
-					scale_sig = SCALE_UP;
+				scale_info = (struct d2sc_scale_info *) msg->scale_data;
+				printf("scale num = %u\n", scale_info->scale_num);
+				if(scale_info->type_id == nf_info->type_id && nfs[nf_info->inst_id].scale_num != 0) {
+					d2sc_nfrt_scale_nfs(nf_info, scale_info->scale_num);
 				}
 				break;
 			case SCALE_BLOCK:
+				scale_info = (struct d2sc_scale_info *)msg->scale_data;
 				if (scale_info->inst_id == nf_info->inst_id) {
-					scale_sig = SCALE_BLOCK;
 					non_blocking = 0;
 					d2sc_nfrt_scale_block(nf_info);
 				}
 				break;
 			case SCALE_RUN:
+				scale_info = (struct d2sc_scale_info *)msg->scale_data;
 				if (scale_info->inst_id == nf_info->inst_id) {
-					scale_sig = SCALE_RUN;
 					non_blocking = 1;
 					d2sc_nfrt_scale_run(nf_info);
 				}
@@ -463,11 +422,10 @@ uint8_t d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 			case SCALE_NO:
 			default:
 				break;		
-		}
+		}		
 		
 		rte_mempool_put(nf_msg_pool, (void *)msg);
 	}
-	return scale_sig;
 }
 
 
@@ -544,8 +502,9 @@ void d2sc_nfrt_scale_run(struct d2sc_nf_info *info) {
 }
 
 
-int d2sc_nfrt_run(struct d2sc_nf_info *info, struct buf_queue *bq, pkt_handler handler) {
-	return d2sc_nfrt_run_callback(info, bq, handler, D2SC_NO_CALLBACK);
+int d2sc_nfrt_run(struct d2sc_nf_info *info,
+	int(*pkt_handler)(struct rte_mbuf *pkt, struct d2sc_pkt_meta *act, __attribute__((unused)) struct d2sc_nf_info *nf_info)) {
+	return d2sc_nfrt_run_callback(info, pkt_handler, D2SC_NO_CALLBACK);
 }
 
 
@@ -559,10 +518,44 @@ int d2sc_nfrt_ret_pkt(struct rte_mbuf *pkt, struct d2sc_nf_info *info) {
 	return 0;
 }
 
+
 struct d2sc_sc *d2sc_nfrt_get_default_sc(void) {
 	return default_sc;
 }
 
+
+int d2sc_nfrt_scale_nfs(struct d2sc_nf_info *nf_info, uint16_t num_nfs) {
+	unsigned cur_lcore, nfs_lcore;
+	unsigned core;
+	uint16_t i;
+	enum rte_lcore_state_t state;
+	int ret;
+	
+	cur_lcore = rte_lcore_id();
+	nfs_lcore = rte_lcore_count() - 2;
+	
+	/* Find the next available lcore to use */
+	RTE_LOG(INFO, NFRT, "Currently running on core %u\n", cur_lcore);
+	for (core = 0, i = 0; core < nfs_lcore && i < num_nfs; 
+		core++, i++ ) {
+		cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
+		state = rte_eal_get_lcore_state(cur_lcore);
+		if (state != RUNNING) {
+			ret = rte_eal_remote_launch(&d2sc_nfrt_start_child, nf_info, cur_lcore);
+			if (ret == -EBUSY) {
+				RTE_LOG(INFO, NFRT, "Core %u is busy, skipping...\n", core);
+				continue;
+			}
+		}
+	}
+	if (nfs_lcore == num_nfs) {
+		RTE_LOG(INFO, NFRT, "All NFs are to scale successfully\n");
+		return 0;
+	} else {
+		RTE_LOG(INFO, NFRT, "No cores available to scale\n");
+		return -1;
+	}
+}
 
 
 /******************************Internal Functions*********************************/
@@ -610,11 +603,13 @@ static void d2sc_nfrt_usage(const char *progname) {
 		"[-t <type_id>]\n\n", progname);
 }
 
-//static void d2sc_nfrt_handle_signal(int sig)
-//{
-//	if (sig == SIGINT || sig == SIGTERM)
-//		keep_running = 0;
-//}
+static void d2sc_nfrt_handle_signal(int sig)
+{
+	if (sig == SIGINT || sig == SIGTERM) {
+		keep_running = 0;
+		non_blocking = 0;
+	}
+}
 
 static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name) {
 	void *mp_data;
@@ -635,12 +630,12 @@ static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name) {
 	return info;
 }
 
-static void d2sc_nfrt_nf_bq_init(struct buf_queue **bq) {
-	(*bq) = calloc(1, sizeof(struct buf_queue));
-	(*bq)->mgr_nf = 0;
-	(*bq)->tx_buf = calloc(1, sizeof(struct pkt_buf));
-	(*bq)->id = init_inst_id;
-	(*bq)->rx_bufs = calloc(MAX_NFS, sizeof(struct pkt_buf));
+static void d2sc_nfrt_nf_bq_init(struct d2sc_nf *nf) {
+	nf->nf_bq = calloc(1, sizeof(struct buf_queue));
+	nf->nf_bq->mgr_nf = 0;
+	nf->nf_bq->tx_buf = calloc(1, sizeof(struct pkt_buf));
+	nf->nf_bq->id = init_inst_id;
+	nf->nf_bq->rx_bufs = calloc(MAX_NFS, sizeof(struct pkt_buf));
 }
 
 static inline uint16_t 
@@ -660,7 +655,7 @@ d2sc_nfrt_dequeue_pkts(void **pkts, struct d2sc_nf_info *info, pkt_handler handl
 	/* Given each packet to the user processing function */
 	for (i = 0; i < nb_pkts; i++) {
 		meta = d2sc_get_pkt_meta((struct rte_mbuf *)pkts[i]);
-		ret_act = (*handler)((struct rte_mbuf *)pkts[i], meta);
+		ret_act = (*handler)((struct rte_mbuf *)pkts[i], meta, info);
 		/* NF returns 0 to give back packets, returns 1 to TX buffer */
 		if (likely(ret_act == 0)) {
 			tx_buf.buf[tx_buf.cnt++] = pkts[i];
@@ -704,6 +699,30 @@ static inline int d2sc_nfrt_nf_srv_time(struct d2sc_nf_info *info) {
 		rte_mempool_put(nf_msg_pool, srv_time_msg);
 		return ret;
 	}
+	return 0;
+}
+
+static int d2sc_nfrt_start_child(void *arg) {
+	struct d2sc_nf *parent_nf;
+	struct d2sc_nf *child_nf;
+	struct d2sc_nf_info *child_info;
+	struct d2sc_nf_info *nf_info = (struct d2sc_nf_info *) arg;
+	
+	parent_nf = &nfs[nf_info->inst_id];
+	parent_nf->scale_num--;
+	child_info = d2sc_nfrt_info_init(nf_info->name);
+	
+	d2sc_nfrt_start_nf(child_info);
+	child_nf = &nfs[child_info->inst_id];
+	child_nf->parent_nf = parent_nf->inst_id;
+	// Child NF inherit specific function from parent NF
+	child_nf->handler = parent_nf->handler;
+	child_nf->callback = parent_nf->callback;
+	
+	RTE_LOG(INFO, NF, "Core %d: Runnning child NF %u thread\n", rte_lcore_id(), child_info->inst_id);
+	d2sc_nfrt_run_callback(child_info, child_nf->handler, child_nf->callback);
+	
+	printf("If we reach, child NF %u is ending\n", child_info->inst_id);
 	return 0;
 }
 
