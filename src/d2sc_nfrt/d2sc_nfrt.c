@@ -536,8 +536,7 @@ int d2sc_nfrt_scale_nfs(struct d2sc_nf_info *nf_info, uint16_t num_nfs) {
 	
 	/* Find the next available lcore to use */
 	RTE_LOG(INFO, NFRT, "Currently running on core %u\n", cur_lcore);
-	for (core = 0, i = 0; core < nfs_lcore && i < num_nfs; 
-		core++, i++ ) {
+	for (core = 0, i = 0; core < nfs_lcore && i < num_nfs; core++, i++ ) {
 		cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
 		state = rte_eal_get_lcore_state(cur_lcore);
 		if (state != RUNNING) {
