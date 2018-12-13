@@ -78,7 +78,7 @@ void d2sc_scale_check_overload(void) {
 			nfs_per_nt_available[nt_id]--;
 			
 			// Calculate the needed NFs acc. to the load
-			uint16_t scale_nfs = ceil((float)load/max_load);
+			uint16_t scale_nfs = floor((float)load/max_load);
 			if (scale_nfs > nfs_per_nt_available[nt_id]) {
 				nfs[i].scale_num = scale_nfs - nfs_per_nt_available[nt_id];
 			}

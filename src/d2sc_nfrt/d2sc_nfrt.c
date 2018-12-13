@@ -400,7 +400,6 @@ void d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 		switch (msg->scale_sig) {
 			case SCALE_UP:
 				scale_info = (struct d2sc_scale_info *) msg->scale_data;
-				printf("scale num = %u\n", scale_info->scale_num);
 				if(scale_info->type_id == nf_info->type_id && nfs[nf_info->inst_id].scale_num != 0) {
 					d2sc_nfrt_scale_nfs(nf_info, scale_info->scale_num);
 				}
