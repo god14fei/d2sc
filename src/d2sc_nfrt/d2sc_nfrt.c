@@ -76,10 +76,8 @@ static uint16_t init_inst_id = NF_NO_ID;
 static uint16_t type_id = -1;
 
 // True as long as the NF should keep processing packets
-extern uint8_t keep_running;
-
-// True as long as the NF is not blocked
-extern uint8_t non_blocking;
+static uint8_t keep_running = 1;
+static uint8_t non_blocking = 1;
 
 // Shared data for default service chain
 struct d2sc_sc *default_sc;
@@ -106,6 +104,8 @@ d2sc_nfrt_dequeue_new_msgs(struct rte_ring *msg_ring);
 static inline int d2sc_nfrt_nf_srv_time(struct d2sc_nf_info *info);
 
 static int d2sc_nfrt_start_child(void *arg);
+
+//static void d2sc_nfrt_set_bk_flag(void);
 
 /************************************API**************************************/
 
@@ -336,10 +336,11 @@ cbk_handler callback) {
 		}
 	}
 	
-	/* Wait for child nf to quit */
-	for (i = 0; i < MAX_NFS; i++) 
+	/* Wait for child nfs and other non-block nfs to quit */
+	for (i = 0; i < MAX_NFS; i++) {
 		while (nfs[i].nf_info != NULL && nfs[i].parent_nf == info->inst_id)
 			sleep(1);
+	}		
 			
 	// Stop and free
 	d2sc_nfrt_stop(info);
@@ -371,8 +372,8 @@ int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg) {
 	switch (msg->msg_type) {
 		case MSG_STOP:
 			RTE_LOG(INFO, NFRT, "Shutting down...\n");
-			keep_running = 0;
 			non_blocking = 0;
+			keep_running = 0;
 			break;
 		case MSG_NOOP:
 		default:
@@ -406,15 +407,13 @@ void d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 				break;
 			case SCALE_BLOCK:
 				scale_info = (struct d2sc_scale_info *)msg->scale_data;
-				if (scale_info->inst_id == nf_info->inst_id) {
-					non_blocking = 0;
+				if (scale_info->inst_id == nf_info->inst_id && nfs[nf_info->inst_id].bk_flag == 1) {
 					d2sc_nfrt_scale_block(nf_info);
 				}
 				break;
 			case SCALE_RUN:
 				scale_info = (struct d2sc_scale_info *)msg->scale_data;
-				if (scale_info->inst_id == nf_info->inst_id) {
-					non_blocking = 1;
+				if (scale_info->inst_id == nf_info->inst_id && nfs[nf_info->inst_id].bk_flag == 1) {
 					d2sc_nfrt_scale_run(nf_info);
 				}
 				break;
@@ -478,6 +477,10 @@ void d2sc_nfrt_scale_block(struct d2sc_nf_info *info) {
 
 void d2sc_nfrt_scale_run(struct d2sc_nf_info *info) {
 	struct d2sc_nf_msg *run_msg;
+	
+	if (info->status != NF_BLOCKED)
+		return;
+	
 	info->status = NF_RUNNING;
 	
 	if (new_msg_queue == NULL) {
@@ -606,8 +609,8 @@ static void d2sc_nfrt_usage(const char *progname) {
 static void d2sc_nfrt_handle_signal(int sig)
 {
 	if (sig == SIGINT || sig == SIGTERM) {
-		keep_running = 0;
 		non_blocking = 0;
+		keep_running = 0;
 	}
 }
 
@@ -725,4 +728,15 @@ static int d2sc_nfrt_start_child(void *arg) {
 	printf("If we reach, child NF %u is ending\n", child_info->inst_id);
 	return 0;
 }
+
+//static void d2sc_nfrt_set_bk_flag(void) {
+//	uint16_t i;
+//	
+//	for (i = 0; i < MAX_NFS; i++) {
+//		if (nfs[i].nf_info == NULL)
+//			continue;
+//			
+//		nfs[i].bk_flag = 1;
+//	}
+//}
 

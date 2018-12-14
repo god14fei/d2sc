@@ -130,15 +130,6 @@ static int scale_thread_main(void *arg) {
 	RTE_LOG(INFO, MGR, "Core %d: Running scale thread\n", rte_lcore_id());
 	
 	for (; worker_keep_running && sleep(scale_iter) <= scale_iter;) {
-		for (i = 0; i < num_nts; i++) {
-			if (nfs_per_nt_num[i] == 0)
-				continue;
-				
-			if (nfs_per_nt_available[i] == 0) {
-				d2sc_scale_check_block(i);
-			}
-		}
-		
 		d2sc_scale_check_overload();
 		d2sc_scale_up_signal();
 		if (up_signal == 1) {
@@ -154,6 +145,7 @@ static int scale_thread_main(void *arg) {
 		}
 		
 		// Check the NF block signal
+		
 //		d2sc_scale_block_signal();
 //		for (i = 0; i < MAX_NFS; i++) {
 //			if (!d2sc_nf_is_valid(&nfs[i])) {
@@ -165,6 +157,17 @@ static int scale_thread_main(void *arg) {
 //				d2sc_scale_block_execute(i, SCALE_BLOCK);
 //			}
 //		}
+
+		// Tell blocked NFs to run with no available NFs	
+		for (i = 0; i < num_nts; i++) {
+			if (nfs_per_nt_num[i] == 0)
+				continue;
+			
+			// In this case, some nfs of this type must be blocked	
+			if (nfs_per_nt_available[i] == 0) {
+				d2sc_scale_check_block(i);
+			}
+		}
 	}
 	
 	RTE_LOG(INFO, MGR, "Core %d: Scale thread done!\n", rte_lcore_id());	

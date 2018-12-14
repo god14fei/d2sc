@@ -27,26 +27,10 @@ inline static uint32_t d2sc_scale_get_used_size(uint16_t nf_id);
 
 inline static int d2sc_scale_send_msg(uint8_t scale_sig,  struct d2sc_scale_info *scale_data);
 
+inline static int d2sc_scale_block_to_run(uint16_t dst_type, uint16_t nf_num);
+
 
 /****************************Interfaces***************************************/
-void d2sc_scale_check_block(uint16_t dst_type) {
-	uint16_t i;
-	struct d2sc_scale_info *scale_info;
-	
-	for (i = 0; i < MAX_NFS; i++) {
-		if (!d2sc_nf_is_valid(&nfs[i]))
-			continue;
-	
-		if ((nfs[i].nf_info->type_id == dst_type) && (nfs[i].bk_flag == 1)){
-			scale_info = rte_calloc("scale_info", 1, sizeof(struct d2sc_scale_info), 0);
-			scale_info->type_id = dst_type;
-			scale_info->scale_num = 0;
-//			scale_info->name = nfs[i].nf_info->name;
-			d2sc_scale_send_msg(SCALE_RUN, scale_info);
-		}
-	}
-}
-
 
 void d2sc_scale_check_overload(void) {
 	int i, ret;
@@ -74,14 +58,20 @@ void d2sc_scale_check_overload(void) {
 		if (load >= max_load) {
 			RTE_LOG(INFO, MGR, "Have detected overloaded NF %u with NF type %u\n", i, nt_id);
 			nfs[i].ol_flag = 1;
-			// Adjust the available NFs if the NF is overloaded
-			nfs_per_nt_available[nt_id]--;
 			
 			// Calculate the needed NFs acc. to the load
 			uint16_t scale_nfs = floor((float)load/max_load);
-			if (scale_nfs > nfs_per_nt_available[nt_id]) {
-				nfs[i].scale_num = scale_nfs - nfs_per_nt_available[nt_id];
+			uint16_t block_nfs = nfs_per_nt_num[nt_id] - nfs_per_nt_available[nt_id];
+			printf("nt_num = %u, nt_available = %u\n", nfs_per_nt_num[nt_id], nfs_per_nt_available[nt_id]);
+			printf("block nfs is %u\n", block_nfs);
+			if (scale_nfs <= block_nfs) {
+				// No need to scale NFs, just change the block NFs to run	
+				d2sc_scale_block_to_run(nt_id, scale_nfs);
+				nfs[i].scale_num = 0;
+			} else {
+				nfs[i].scale_num = scale_nfs - block_nfs;
 			}
+			
 		}		
 	}
 
@@ -119,10 +109,30 @@ void d2sc_scale_up_signal(void) {
 	up_signal = 0;
 }
 
+
+void d2sc_scale_check_block(uint16_t dst_type) {
+	uint16_t i;
+	struct d2sc_scale_info *scale_info;
+	
+	for (i = 0; i < MAX_NFS; i++) {
+		if (!d2sc_nf_is_valid(&nfs[i]))
+			continue;
+	
+		if ((nfs[i].nf_info->type_id == dst_type) && (nfs[i].nf_info->status == NF_BLOCKED)){
+			scale_info = rte_calloc("scale_info", 1, sizeof(struct d2sc_scale_info), 0);
+			scale_info->inst_id = i;
+			scale_info->scale_num = 0;
+//			scale_info->name = nfs[i].nf_info->name;
+			d2sc_scale_send_msg(SCALE_RUN, scale_info);
+		}
+	}
+}
+
+
 void d2sc_scale_block_signal(void) {
 	uint16_t i;
 	static uint32_t cnter = 0;
-	static uint32_t check_interval = 5;
+	static uint32_t check_interval = 50000;
 	
 	for (i = 0; i < MAX_NFS; i++) {
 	
@@ -158,11 +168,17 @@ void d2sc_scale_up_execute(uint16_t nf_id) {
 	
 }
 
+
 void d2sc_scale_block_execute(uint16_t dst_nf, uint8_t msg_type) {
 	struct d2sc_scale_info *scale_info;
 	
+	// Ensure the block flag has been set before send msg
+	if (nfs[dst_nf].bk_flag != 1)
+		return;
+	
 	scale_info = rte_calloc("scale_info", 1, sizeof(struct d2sc_scale_info), 0);
 	scale_info->inst_id = dst_nf;
+	scale_info->scale_num = 0;
 //	scale_info->name = nfs[dst_nf].nf_info->name;
 	d2sc_scale_send_msg(msg_type, scale_info);
 }
@@ -239,6 +255,31 @@ inline static int d2sc_scale_send_msg(uint8_t scale_sig, struct d2sc_scale_info 
 	if (rte_ring_enqueue(scale_msg_ring, msg) < 0) {
 		rte_mempool_put(nf_msg_mp, msg);
 		rte_exit(EXIT_FAILURE, "Cannot send scale message to NF\n");
+	}
+	return 0;
+}
+
+inline static int d2sc_scale_block_to_run(uint16_t dst_type, uint16_t nf_num) {
+	uint16_t i;
+	uint16_t counter = 0;
+	struct d2sc_scale_info *scale_info;
+	
+	for (i = 0; i < MAX_NFS; i++) {
+		if (nfs[i].nf_info == NULL)
+			continue;
+		
+		// Change the status of blocked NFs to running	
+		if (nfs[i].nf_info->type_id == dst_type && nfs[i].nf_info->status == NF_BLOCKED) {
+			scale_info = rte_calloc("scale_info", 1, sizeof(struct d2sc_scale_info), 0);
+			scale_info->inst_id = i;
+			scale_info->scale_num = 0;
+			d2sc_scale_send_msg(SCALE_RUN, scale_info);
+			counter++;
+		}
+		// Just need to change nf_num nfs to running status
+		if (counter == nf_num) {
+			return 0;
+		}
 	}
 	return 0;
 }

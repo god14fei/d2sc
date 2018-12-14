@@ -53,8 +53,6 @@ static uint64_t cur_cycles;
 extern struct port_info *ports;
 
 // True as long as the NF should keep processing packets
-uint8_t keep_running = 1;
-uint8_t non_blocking = 1;
 static uint8_t scaler_keep_running = 1;
 
 /*
@@ -157,13 +155,6 @@ packet_handler(struct rte_mbuf* pkt, struct d2sc_pkt_meta* meta, __attribute__((
 	return 0;
 }
 
-static void d2sc_handle_signal(int sig)
-{
-	if (sig == SIGINT || sig == SIGTERM)
-		keep_running = 0;
-		non_blocking = 0;
-}
-
 static int  scaled_nf_thread(void *arg) {
 	RTE_LOG(INFO, NF, "Core %d: Runnning scaling thread\n", rte_lcore_id());
 	
@@ -182,10 +173,6 @@ int main(int argc, char *argv[]) {
 	const char *progname = argv[0];
 	
 	cur_lcore = rte_lcore_id();
-	
-	/* Listen for ^C and docker stop so we can exit gracefully */
-	signal(SIGINT, d2sc_handle_signal);
-	signal(SIGTERM, d2sc_handle_signal);
 	
 	if ((arg_offset = d2sc_nfrt_init(argc, argv, NF_NAME, &nf_info)) < 0)
 		return -1;

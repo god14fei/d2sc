@@ -43,8 +43,6 @@ static uint32_t print_delay = 1000000;
 static uint32_t dest;
 
 // True as long as the NF should keep processing packets
-uint8_t keep_running = 1;
-uint8_t non_blocking = 1;
 static uint8_t scaler_keep_running = 1;
 
 /* AES encryption parameters */
