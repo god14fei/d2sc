@@ -280,6 +280,9 @@ inline static int d2sc_nf_block(struct d2sc_nf_info *nf_info) {
 	
 	// Ensure the nf is now blocked
 	if (nfs[nf_id].bk_flag != 1) return -1;
+		
+	// Actually block the NF in its callback
+	nfs[nf_id].bk_flag == 2;
 	
 	// available NFs of this type minus 1
 	nfs_per_nt_available[nt_id]--;
@@ -297,9 +300,10 @@ inline static int d2sc_nf_run(struct d2sc_nf_info *nf_info) {
 	nt_id = nf_info->type_id;
 	
 	// Ensure the nf is blocked before
-	if (nfs[nf_id].bk_flag != 1) return -1;
+	if (nfs[nf_id].bk_flag != 2) return -1;
 	
 	// Set the bk_flag to 0
+	printf("have set nf %u bk flag\n", nf_id);
 	nfs[nf_id].bk_flag = 0;
 	
 	// available nfs of this type add 1

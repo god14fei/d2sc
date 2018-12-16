@@ -23,6 +23,7 @@
 extern struct d2sc_nf *nfs;
 extern uint16_t **nts;
 extern uint16_t *nfs_per_nt_num;
+extern uint16_t *nfs_per_nt_available;
 
 /********************************Interfaces***********************************/
 

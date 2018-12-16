@@ -53,7 +53,7 @@ static uint64_t cur_cycles;
 extern struct port_info *ports;
 
 // True as long as the NF should keep processing packets
-static uint8_t scaler_keep_running = 1;
+//static uint8_t scaler_keep_running = 1;
 
 /*
  * Print a usage message
@@ -155,16 +155,16 @@ packet_handler(struct rte_mbuf* pkt, struct d2sc_pkt_meta* meta, __attribute__((
 	return 0;
 }
 
-static int  scaled_nf_thread(void *arg) {
-	RTE_LOG(INFO, NF, "Core %d: Runnning scaling thread\n", rte_lcore_id());
-	
-	while (scaler_keep_running) {
-		// Keep checking whether this NF needs to scale
-		d2sc_nfrt_check_scale_msg(nf_info);
-	}
-	
-	return 0;
-}
+//static int  scaled_nf_thread(void *arg) {
+//	RTE_LOG(INFO, NF, "Core %d: Runnning scaling thread\n", rte_lcore_id());
+//	
+//	while (scaler_keep_running) {
+//		// Keep checking whether this NF needs to scale
+//		d2sc_nfrt_check_scale_msg(nf_info);
+//	}
+//	
+//	return 0;
+//}
 
 int main(int argc, char *argv[]) {
 	int arg_offset;
@@ -184,11 +184,11 @@ int main(int argc, char *argv[]) {
 		rte_exit(EXIT_FAILURE, "Invalid commandline arguments\n");
 	}
 	
-	cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
-	if (rte_eal_remote_launch(scaled_nf_thread, NULL, cur_lcore) == -EBUSY) {
-		RTE_LOG(ERR, NF, "Core %d is already busy, cannot use for NF scaled thread", cur_lcore);
-		return -1;
-	}
+//	cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
+//	if (rte_eal_remote_launch(scaled_nf_thread, NULL, cur_lcore) == -EBUSY) {
+//		RTE_LOG(ERR, NF, "Core %d is already busy, cannot use for NF scaled thread", cur_lcore);
+//		return -1;
+//	}
 	
 	RTE_LOG(INFO, NF, "Core %d: Runnning initial thread\n", rte_lcore_id());
 	
@@ -196,9 +196,6 @@ int main(int argc, char *argv[]) {
 	last_cycle = rte_get_tsc_cycles();
 	
 	d2sc_nfrt_run_callback(nf_info, &packet_handler, &callback_handler);
-	
-	// Stop the scaling thread
-	scaler_keep_running = 0;
 	
 	printf("If we reach here, initial NF is ending\n");
 	

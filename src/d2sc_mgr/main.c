@@ -145,18 +145,17 @@ static int scale_thread_main(void *arg) {
 		}
 		
 		// Check the NF block signal
-		
-//		d2sc_scale_block_signal();
-//		for (i = 0; i < MAX_NFS; i++) {
-//			if (!d2sc_nf_is_valid(&nfs[i])) {
-//				continue;
-//			}
-//			
-//			if (nfs[i].bk_flag == 1) {
-//				RTE_LOG(INFO, MGR, "Core %d: Notifying NF %"PRIu16" to scale block\n", rte_lcore_id(), i);
-//				d2sc_scale_block_execute(i, SCALE_BLOCK);
-//			}
-//		}
+		d2sc_scale_block_signal();
+		for (i = 0; i < MAX_NFS; i++) {
+			if (!d2sc_nf_is_valid(&nfs[i])) {
+				continue;
+			}
+			
+			if (nfs[i].bk_flag == 1 && nfs[i].nf_info->status == NF_RUNNING) {
+				RTE_LOG(INFO, MGR, "Core %d: Notifying NF %"PRIu16" to scale block\n", rte_lcore_id(), i);
+				d2sc_scale_block_execute(i, SCALE_BLOCK);
+			}
+		}
 
 		// Tell blocked NFs to run with no available NFs	
 		for (i = 0; i < num_nts; i++) {

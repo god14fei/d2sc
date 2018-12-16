@@ -43,7 +43,7 @@ static uint32_t print_delay = 1000000;
 static uint32_t dest;
 
 // True as long as the NF should keep processing packets
-static uint8_t scaler_keep_running = 1;
+//static uint8_t scaler_keep_running = 1;
 
 /* AES encryption parameters */
 BYTE key[1][32] = {
@@ -186,16 +186,16 @@ packet_handler(struct rte_mbuf* pkt, struct d2sc_pkt_meta* meta, __attribute__((
 	return 0;
 }
 
-static int  scaled_nf_thread(void *arg) {
-	RTE_LOG(INFO, NF, "Core %d: Runnning scaling thread\n", rte_lcore_id());
-	
-	while (scaler_keep_running) {
-		// Keep checking whether this NF needs to scale
-		d2sc_nfrt_check_scale_msg(nf_info);
-	}
-	
-	return 0;
-}
+//static int  scaled_nf_thread(void *arg) {
+//	RTE_LOG(INFO, NF, "Core %d: Runnning scaling thread\n", rte_lcore_id());
+//	
+//	while (scaler_keep_running) {
+//		// Keep checking whether this NF needs to scale
+//		d2sc_nfrt_check_scale_msg(nf_info);
+//	}
+//	
+//	return 0;
+//}
 
 int main(int argc, char *argv[]) {
 	int arg_offset;
@@ -217,15 +217,16 @@ int main(int argc, char *argv[]) {
 	/* Initialise encryption engine. Key should be configurable. */
 	aes_key_setup(key[0], key_schedule, 256);
 	
-	cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
-	if (rte_eal_remote_launch(scaled_nf_thread, NULL, cur_lcore) == -EBUSY) {
-		RTE_LOG(ERR, NF, "Core %d is already busy, cannot use for NF scaled thread", cur_lcore);
-		return -1;
-	}
+//	cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
+//	if (rte_eal_remote_launch(scaled_nf_thread, NULL, cur_lcore) == -EBUSY) {
+//		RTE_LOG(ERR, NF, "Core %d is already busy, cannot use for NF scaled thread", cur_lcore);
+//		return -1;
+//	}
 	
 	RTE_LOG(INFO, NF, "Core %d: Runnning initial thread\n", rte_lcore_id());
 	
 	d2sc_nfrt_run(nf_info, &packet_handler);
-		printf("If we reach here, intial NF is ending\n");
+	
+	printf("If we reach here, intial NF is ending\n");
 	return 0;
 }

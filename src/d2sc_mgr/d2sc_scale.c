@@ -14,7 +14,7 @@
 #include "d2sc_mgr.h"
 #include "d2sc_scale.h"
 
-/**********************NF scale up and block signal***************************/
+/**********************NF scale up signal***************************/
 
 uint8_t up_signal = 0;
 
@@ -86,7 +86,7 @@ void d2sc_scale_check_overload(void) {
 			if (nfs[i].ol_flag == 0) {
 				nfs[i].ol_flag = 1;
 				// Adjust the available NFs if the NF is overloaded
-				if (--nfs_per_nt_available[nt_id] == 0)	
+				if (nfs_per_nt_available[nt_id] == 0)	
 					nfs[i].scale_num++;
 			}
 		}			
@@ -119,7 +119,7 @@ void d2sc_scale_check_block(uint16_t dst_type) {
 			continue;
 	
 		if ((nfs[i].nf_info->type_id == dst_type) && (nfs[i].nf_info->status == NF_BLOCKED)){
-			scale_info = rte_calloc("scale_info", 1, sizeof(struct d2sc_scale_info), 0);
+			scale_info = rte_calloc(get_scale_info_name(dst_type), 1, sizeof(struct d2sc_scale_info), 0);
 			scale_info->inst_id = i;
 			scale_info->scale_num = 0;
 //			scale_info->name = nfs[i].nf_info->name;
@@ -132,10 +132,13 @@ void d2sc_scale_check_block(uint16_t dst_type) {
 void d2sc_scale_block_signal(void) {
 	uint16_t i;
 	static uint32_t cnter = 0;
-	static uint32_t check_interval = 50000;
+	static uint32_t check_interval = 5;
 	
 	for (i = 0; i < MAX_NFS; i++) {
-	
+		if (!d2sc_nf_is_valid(&nfs[i]))
+			continue;
+		
+		printf("The NF %u ring size is %u\n", i, d2sc_scale_get_free_size(i));
 		/* Check whether the NF queue is empty */
 		if (d2sc_scale_get_free_size(i) == NF_RING_SIZE - 1) {
 			// The NF queue keeps empty in 5 checks
@@ -149,21 +152,21 @@ void d2sc_scale_block_signal(void) {
 
 
 void d2sc_scale_up_execute(uint16_t nf_id) {
-	uint16_t i;
-	uint16_t nt_id;
+//	uint16_t nt_id;
 //	const char *name;
 	struct d2sc_scale_info *scale_info;
 	int ret;
+
 	
-	nt_id = nfs[nf_id].nf_info->type_id;
-	scale_info = rte_calloc("scale_info", 1, sizeof(struct d2sc_scale_info), 0);
-	scale_info->type_id = nt_id;
+//	nt_id = nfs[nf_id].nf_info->type_id;
+	scale_info = rte_calloc(get_scale_info_name(nf_id), 1, sizeof(struct d2sc_scale_info), 0);
+	scale_info->inst_id = nf_id;
 	scale_info->scale_num = nfs[nf_id].scale_num;
 //	scale_info->name = name;
 	printf("scale number is %u\n", nfs[nf_id].scale_num);
 	ret = d2sc_scale_send_msg(SCALE_UP, scale_info);
 	if (ret == 0) {
-		RTE_LOG(INFO, MGR, "Send scale message to NF Type %u successfully\n", nt_id);
+		RTE_LOG(INFO, MGR, "Send scale message to NF %u\n", nf_id);
 	}
 	
 }
@@ -176,7 +179,7 @@ void d2sc_scale_block_execute(uint16_t dst_nf, uint8_t msg_type) {
 	if (nfs[dst_nf].bk_flag != 1)
 		return;
 	
-	scale_info = rte_calloc("scale_info", 1, sizeof(struct d2sc_scale_info), 0);
+	scale_info = rte_calloc(get_scale_info_name(dst_nf), 1, sizeof(struct d2sc_scale_info), 0);
 	scale_info->inst_id = dst_nf;
 	scale_info->scale_num = 0;
 //	scale_info->name = nfs[dst_nf].nf_info->name;
@@ -219,9 +222,6 @@ void d2sc_scale_block_execute(uint16_t dst_nf, uint8_t msg_type) {
 inline static uint32_t d2sc_scale_get_free_size(uint16_t nf_id) {
 	struct rte_ring *nf_q;
 	uint32_t free_size;
-	
-	if (!d2sc_nf_is_valid(&nfs[nf_id]))
-		return 0;
 		
 	nf_q = nfs[nf_id].rx_q;	
 	free_size = nf_q->mask + nf_q->cons.tail - nf_q->prod.head;	
@@ -231,9 +231,6 @@ inline static uint32_t d2sc_scale_get_free_size(uint16_t nf_id) {
 inline static uint32_t d2sc_scale_get_used_size(uint16_t nf_id) {
 	struct rte_ring *nf_q;
 	uint32_t used_size;
-	
-	if (!d2sc_nf_is_valid(&nfs[nf_id]))
-		return 0;
 		
 	nf_q = nfs[nf_id].rx_q;
 	used_size = nf_q->prod.tail - nf_q->cons.head;
@@ -270,9 +267,10 @@ inline static int d2sc_scale_block_to_run(uint16_t dst_type, uint16_t nf_num) {
 		
 		// Change the status of blocked NFs to running	
 		if (nfs[i].nf_info->type_id == dst_type && nfs[i].nf_info->status == NF_BLOCKED) {
-			scale_info = rte_calloc("scale_info", 1, sizeof(struct d2sc_scale_info), 0);
+			scale_info = rte_calloc(get_scale_info_name(i), 1, sizeof(struct d2sc_scale_info), 0);
 			scale_info->inst_id = i;
 			scale_info->scale_num = 0;
+			printf("send block run message for NF %u\n", i);
 			d2sc_scale_send_msg(SCALE_RUN, scale_info);
 			counter++;
 		}
