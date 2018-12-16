@@ -48,6 +48,14 @@ uint16_t d2sc_sc_nt_to_nf_map(uint16_t type_id, struct rte_mbuf *pkt) {
 //		inst_index = cur_index;
 //		cur_index++;	
 //	}	
+
+//	if (cur_index < num_nfs_available) {
+//		inst_index = pkt->hash.rss % (++cur_index);
+//	} else {
+//		cur_index = 0;
+//		inst_index = pkt->hash.rss % (++cur_index);	
+//	}	
+	
 	
 	inst_index = pkt->hash.rss % num_nfs_available;
 	uint16_t inst_id = nts[type_id][inst_index];

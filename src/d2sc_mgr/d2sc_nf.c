@@ -282,7 +282,7 @@ inline static int d2sc_nf_block(struct d2sc_nf_info *nf_info) {
 	if (nfs[nf_id].bk_flag != 1) return -1;
 		
 	// Actually block the NF in its callback
-	nfs[nf_id].bk_flag == 2;
+	nfs[nf_id].bk_flag = 2;
 	
 	// available NFs of this type minus 1
 	nfs_per_nt_available[nt_id]--;

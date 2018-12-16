@@ -406,22 +406,22 @@ void d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
 		switch (msg->scale_sig) {
 			case SCALE_UP:
 				scale_info = (struct d2sc_scale_info *) msg->scale_data;
-				printf("inst id %u, scale num %u, lcore %d\n", nf_info->inst_id, nfs[nf_info->inst_id].scale_num, rte_lcore_id());
+				printf("nf %u needs scale num %u\n", nf_info->inst_id, nfs[nf_info->inst_id].scale_num);
 				if(scale_info->inst_id == nf_info->inst_id && nfs[nf_info->inst_id].scale_num != 0) {
 					d2sc_nfrt_scale_nfs(nf_info, scale_info->scale_num);
 				}
 				break;
 			case SCALE_BLOCK:
-				printf("inst id %u get scale block message\n", nf_info->inst_id);
+				printf("nf %u get scale block message\n", nf_info->inst_id);
 				scale_info = (struct d2sc_scale_info *)msg->scale_data;
 				if (scale_info->inst_id == nf_info->inst_id && nfs[nf_info->inst_id].bk_flag == 1) {
 					d2sc_nfrt_scale_block(nf_info);
 				}
 				break;
 			case SCALE_RUN:
+				printf("nf %u get scale run message\n", nf_info->inst_id);
 				scale_info = (struct d2sc_scale_info *)msg->scale_data;
-				if (scale_info->inst_id == nf_info->inst_id && nfs[nf_info->inst_id].bk_flag == 1) {
-					printf("nf %u perform scale run\n", nf_info->inst_id);
+				if (scale_info->inst_id == nf_info->inst_id && nfs[nf_info->inst_id].bk_flag == 2) {
 					d2sc_nfrt_scale_run(nf_info);
 				}
 				break;
