@@ -28,9 +28,9 @@ uint16_t d2sc_sc_nt_to_nf_map(uint16_t type_id, struct rte_mbuf *pkt) {
 	if (!nts || !nfs_per_nt_num) {
 		rte_exit(EXIT_FAILURE, "Failed to retrieve NF map information\n");
 	}
-	uint16_t num_nfs_available = nfs_per_nt_num[type_id];
+	uint16_t num_nfs_per_nt = nfs_per_nt_num[type_id];
 	
-	if (num_nfs_available == 0)
+	if (num_nfs_per_nt == 0)
 		return 0;
 		
 	if (pkt == NULL)
@@ -38,8 +38,7 @@ uint16_t d2sc_sc_nt_to_nf_map(uint16_t type_id, struct rte_mbuf *pkt) {
 	
 //	static uint16_t cur_index = 0;
 	uint16_t inst_index;
-	
-	/* Keep the traffic balanced through all available NFs */
+		
 //	if (cur_index < num_nfs_available) {
 //		inst_index = cur_index;
 //		cur_index++;
@@ -48,18 +47,19 @@ uint16_t d2sc_sc_nt_to_nf_map(uint16_t type_id, struct rte_mbuf *pkt) {
 //		inst_index = cur_index;
 //		cur_index++;	
 //	}	
-
-//	if (cur_index < num_nfs_available) {
-//		inst_index = pkt->hash.rss % (++cur_index);
-//	} else {
-//		cur_index = 0;
-//		inst_index = pkt->hash.rss % (++cur_index);	
-//	}	
 	
-	
-	inst_index = pkt->hash.rss % num_nfs_available;
+	/* Keep the traffic balanced through all available NFs */
+	inst_index = pkt->hash.rss % num_nfs_per_nt;
 	uint16_t inst_id = nts[type_id][inst_index];
 	
+	// Skip the blocked NF
+	while (nfs[inst_id].bk_flag == 2) {
+		// find the next instance id
+		inst_id++;
+		if (inst_id > num_nfs_per_nt) {
+			inst_id = inst_id % num_nfs_per_nt;
+		}
+	}
 	return inst_id;
 }
 

@@ -149,6 +149,7 @@ struct d2sc_nf {
 	struct rte_ring *rx_q;
 	struct rte_ring *tx_q;
 	struct rte_ring *msg_q;
+	struct rte_ring *scale_q;
 	struct d2sc_nf_info *nf_info;
 	uint16_t inst_id;
 	
@@ -195,7 +196,6 @@ struct d2sc_sc {
 
 #define MP_PKTMBUF_NAME "pktmbuf_mp"
 #define MP_NF_INFO_NAME "nf_info_mp"   // Mempool name for the NF info
-#define NF_SCALE_INFO_NAME "nf_%u_scale_info_%"PRIu64
 
 /* common names for NF states */
 #define NF_WAITTING_FOR_ID 0		// Begin in an startup process, and has no ID registered by manager yet
@@ -237,16 +237,6 @@ static inline const char * get_tx_queue_name(unsigned id) {
 	
 	snprintf(buffer, sizeof(buffer) - 1, NF_TXQ_NAME, id);
 	return buffer;	
-}
-
-/* 
- * Get the scale info name with an NF ID
- */
-static inline const char * get_scale_info_name(unsigned id) {
-	static char buffer[sizeof(NF_SCALE_INFO_NAME) + 2];
-	
-	snprintf(buffer, sizeof(buffer) - 1, NF_SCALE_INFO_NAME, id, rte_get_tsc_cycles());
-	return buffer;
 }
 
 /*

@@ -82,6 +82,7 @@ void d2sc_scale_check_overload(void) {
 		
 		nt_id = nfs[i].nf_info->type_id;	
 		used_size = d2sc_scale_get_used_size(i);
+		printf("nf %u ring used size %u\n", i, used_size);
 		if (used_size == NF_RING_SIZE - 1) {	// if the RX queue of an NF is full
 			if (nfs[i].ol_flag == 0) {
 				nfs[i].ol_flag = 1;
@@ -115,40 +116,41 @@ void d2sc_scale_check_block(uint16_t dst_type) {
 	struct d2sc_scale_info *scale_info;
 	
 	for (i = 0; i < MAX_NFS; i++) {
-		if (!d2sc_nf_is_valid(&nfs[i]))
+		if (nfs[i].nf_info == NULL)
 			continue;
-	
+		
+		// Just scale run parent NF if all NFs are blocked, since parent NF has small ID
 		if ((nfs[i].nf_info->type_id == dst_type) && (nfs[i].nf_info->status == NF_BLOCKED)){
 			scale_info = rte_calloc(get_scale_info_name(dst_type), 1, sizeof(struct d2sc_scale_info), 0);
 			scale_info->inst_id = i;
 			scale_info->scale_num = 0;
-//			scale_info->name = nfs[i].nf_info->name;
 			d2sc_scale_send_msg(SCALE_RUN, scale_info);
+			break;
 		}
 	}
 }
 
 
-void d2sc_scale_block_signal(void) {
-	uint16_t i;
-	static uint32_t cnter = 0;
-	static uint32_t check_interval = 5;
-	
-	for (i = 0; i < MAX_NFS; i++) {
-		if (!d2sc_nf_is_valid(&nfs[i]))
-			continue;
-		
-		printf("The NF %u ring size is %u\n", i, d2sc_scale_get_free_size(i));
-		/* Check whether the NF queue is empty */
-		if (d2sc_scale_get_free_size(i) == NF_RING_SIZE - 1) {
-			// The NF queue keeps empty in 5 checks
-			if (++cnter == check_interval) {
-				nfs[i].bk_flag = 1;
-				cnter = 0;
-			}
-		}
-	}
-}
+//void d2sc_scale_block_signal(void) {
+//	uint16_t i;
+//	static uint32_t cnter = 0;
+//	static uint32_t check_interval = 5;
+//	
+//	for (i = 0; i < MAX_NFS; i++) {
+//		if (!d2sc_nf_is_valid(&nfs[i]))
+//			continue;
+//		
+//		printf("The NF %u ring size is %u\n", i, d2sc_scale_get_free_size(i));
+//		/* Check whether the NF queue is empty */
+//		if (d2sc_scale_get_free_size(i) == NF_RING_SIZE - 1) {
+//			// The NF queue keeps empty in 5 checks
+//			if (++cnter == check_interval) {
+//				nfs[i].bk_flag = 1;
+//				cnter = 0;
+//			}
+//		}
+//	}
+//}
 
 
 void d2sc_scale_up_execute(uint16_t nf_id) {
@@ -240,6 +242,9 @@ inline static uint32_t d2sc_scale_get_used_size(uint16_t nf_id) {
 inline static int d2sc_scale_send_msg(uint8_t scale_sig, struct d2sc_scale_info *scale_data) {
 	int ret;
 	struct d2sc_scale_msg *msg;	
+	struct rte_ring *scale_q;
+	
+	scale_q = nfs[scale_data->inst_id].scale_q;
 	
 	ret = rte_mempool_get(nf_msg_mp, (void **)(&msg));
 	if (ret != 0) {
@@ -249,7 +254,7 @@ inline static int d2sc_scale_send_msg(uint8_t scale_sig, struct d2sc_scale_info 
 	
 	msg->scale_sig = scale_sig;
 	msg->scale_data = scale_data;
-	if (rte_ring_enqueue(scale_msg_ring, msg) < 0) {
+	if (rte_ring_enqueue(scale_q, msg) < 0) {
 		rte_mempool_put(nf_msg_mp, msg);
 		rte_exit(EXIT_FAILURE, "Cannot send scale message to NF\n");
 	}

@@ -418,8 +418,10 @@ init_shm_rings(void) {
 	const char *rxq_name;
 	const char *txq_name;
 	const char *msgq_name;
+	const char *scaleq_name;
 	const unsigned ring_size = NF_RING_SIZE;
 	const unsigned msg_ring_size = NF_MSG_RING_SIZE;
+	const unsigned scale_ring_size = NF_SCALE_RING_SIZE;
 	
 	for (i=0; i < MAX_NFS; i++) {
 		/* Create an rx queue and tx queue for each NF */
@@ -427,6 +429,7 @@ init_shm_rings(void) {
 		rxq_name = get_rx_queue_name(i);
 		txq_name = get_tx_queue_name(i);
 		msgq_name = get_msg_queue_name(i);
+		scaleq_name = get_scale_queue_name(i);
 		nfs[i].inst_id = i;
 		nfs[i].ol_flag = 0;		// preset the overload flag to 0, no overload
 		nfs[i].bk_flag = 0;		// preset the block flag to 0, non_block
@@ -438,6 +441,8 @@ init_shm_rings(void) {
 					socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
 		nfs[i].msg_q = rte_ring_create(msgq_name, msg_ring_size,
 					socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
+		nfs[i].scale_q = rte_ring_create(scaleq_name, scale_ring_size,
+					socket_id, RING_F_SC_DEQ);	/* multi prod, single cons */
 		
 		if (nfs[i].rx_q == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot create rx ring queue for NF %u\n", i);
@@ -446,7 +451,11 @@ init_shm_rings(void) {
 			rte_exit(EXIT_FAILURE, "Cannot create tx ring queue for NF %u\n", i);
 		
 		if (nfs[i].msg_q == NULL)
-			rte_exit(EXIT_FAILURE, "Cannot create msg ring queue for NF %u\n", i);														 
+			rte_exit(EXIT_FAILURE, "Cannot create msg ring queue for NF %u\n", i);	
+			
+		if (nfs[i].scale_q == NULL)
+			rte_exit(EXIT_FAILURE, "Cannot create scale ring queue for NF %u\n", i);		
+													 
 	}
 	return 0;
 }

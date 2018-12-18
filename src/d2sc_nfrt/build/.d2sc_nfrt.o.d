@@ -163,9 +163,9 @@ dep_d2sc_nfrt.o = /home/feishen/d2sc/src/d2sc_nfrt/d2sc_nfrt.c \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_mgr/d2sc_init.h \
  /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/rte_pdump.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_mgr/d2sc_stats.h \
+ /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_mgr/d2sc_scale.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_sc.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_common.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_flow_table.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_flow_steer.h \
- /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_mgr/d2sc_scale.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_pkt_process.h

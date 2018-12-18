@@ -106,5 +106,7 @@ dep_d2sc_sc.o = /home/feishen/d2sc/src/d2sc_nfrt/d2sc_sc.c \
  /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/rte_byteorder.h \
  /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/generic/rte_byteorder.h \
  /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/rte_byteorder_64.h \
+ /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/rte_cycles.h \
+ /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/generic/rte_cycles.h \
  /home/feishen/d2sc/src/d2sc_nfrt/d2sc_msg.h \
  /home/feishen/d2sc/src/d2sc_nfrt/d2sc_sc.h

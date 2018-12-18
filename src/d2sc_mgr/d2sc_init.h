@@ -39,6 +39,7 @@
 
 #include "d2sc_mgr/d2sc_parse.h"
 #include "d2sc_mgr/d2sc_stats.h"
+#include "d2sc_mgr/d2sc_scale.h"
 #include "d2sc_sc.h"
 #include "d2sc_includes.h"
 #include "d2sc_common.h"
@@ -64,6 +65,7 @@
 #define RTE_RX_DESC_DEFAULT 512
 #define RTE_TX_DESC_DEFAULT 512
 #define NF_MSG_RING_SIZE 128
+#define NF_SCALE_RING_SIZE 128
 
 #define NO_FLAGS 0
 

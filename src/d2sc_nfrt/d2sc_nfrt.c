@@ -19,6 +19,7 @@
 #include <signal.h>
 
 #include <rte_cycles.h>
+#include <rte_power.h>
 
 /*****************************Internal headers********************************/
 
@@ -32,7 +33,8 @@
 
 
 #define D2SC_NO_CALLBACK NULL
-#define MAX_LOAD 300
+#define MAX_LOAD 500
+#define MAX_CHECK_ITERS 105000000 // equal to 5s
 
 
 /******************************Global Variables*******************************/
@@ -98,7 +100,7 @@ static inline uint16_t
 d2sc_nfrt_dequeue_pkts(void **pkts, struct d2sc_nf_info *info, pkt_handler handler);
 
 static inline void 
-d2sc_nfrt_dequeue_new_msgs(struct rte_ring *msg_ring);
+d2sc_nfrt_dequeue_new_msgs(struct d2sc_nf *nf);
 
 static inline int d2sc_nfrt_nf_srv_time(struct d2sc_nf_info *info);
 
@@ -280,14 +282,21 @@ cbk_handler callback) {
 	struct d2sc_nf *nf;
 	int ret;
 	uint16_t nb_pkts, i;
+	unsigned core;
+	static uint32_t cur_freq;
+	static uint64_t last_cycle;
+	static uint64_t cur_cycles;
+	
 	static uint8_t srv_time_flag = 0;
+	static uint64_t rx_idle_cnt = 0;
 	
 	nf = &nfs[info->inst_id];
 	nf->handler = handler;
 	nf->callback = callback;
 	
-	static uint64_t last_cycle;
-	static uint64_t cur_cycles;
+	core = rte_lcore_id();
+	cur_freq = rte_power_get_freq(core);
+	printf("current frequency is %lu\n", cur_freq);
 	
 	printf("\n NF %d handling packets\n", info->inst_id);
 	
@@ -302,18 +311,30 @@ cbk_handler callback) {
 	printf("[Press Ctrl-C to quit ...]\n");
 	last_cycle = rte_get_tsc_cycles();
 	for (; keep_running; ) {
-		for (; nf->bk_flag != 2; ) {
+		while (nf->bk_flag != 2) {
+			// Set the frequency to normal
+			if (rte_power_get_freq(core) != cur_freq) {
+				rte_power_set_freq(core, cur_freq);
+			}
+			
 			nb_pkts = d2sc_nfrt_dequeue_pkts((void **)pkts, info, handler);
 		
 			if (likely(nb_pkts > 0)) {
 				d2sc_pkt_process_tx_batch(nf->nf_bq, pkts, nb_pkts, nf);
+			} else {
+				rx_idle_cnt++;
+				if (rx_idle_cnt > MAX_CHECK_ITERS && nf->parent_nf != 0) {
+					// block the child NF
+					nf->bk_flag = 1;
+					rx_idle_cnt = 0;
+				}
 			}
 			
 			/* Flush the packet buffers */
 			d2sc_pkt_enqueue_tx_ring(nf->nf_bq->tx_buf, info->inst_id);
 			d2sc_pkt_flush_all_bqs(nf->nf_bq);
 		
-			d2sc_nfrt_dequeue_new_msgs(nf->msg_q);
+			d2sc_nfrt_dequeue_new_msgs(nf);
 		
 			if (callback != D2SC_NO_CALLBACK) {
 				keep_running = !(*callback)(info) && keep_running;
@@ -325,6 +346,7 @@ cbk_handler callback) {
 				info->srv_time = (cur_cycles - last_cycle) * 1000000 / rte_get_timer_hz();
 				//last_cycle = cur_cycles;
 				printf("Computed service time = %u us\n", info->srv_time);
+				printf("rte timer hz is %llu\n", rte_get_timer_hz());
 				/* Send nf srv_time msg to manager */
 				ret = d2sc_nfrt_nf_srv_time(info);
 				if (ret != 0) {
@@ -334,19 +356,34 @@ cbk_handler callback) {
 			}
 			
 			// Check scale messages when NF is running
-			d2sc_nfrt_check_scale_msg(info);
+			d2sc_nfrt_check_scale_msg(nf);
 		}
 		// Keep checking scale messages when NF is blocked
-		d2sc_nfrt_check_scale_msg(info);
-		// sleep for a while to avoid too much CPU consumption when NF is blocked
+		d2sc_nfrt_check_scale_msg(nf);
+		
+		// Avoid too much CPU consumption when NF is blocked
+		ret = rte_power_freq_min(core);
+		if (ret <= 0) {
+			RTE_LOG(INFO, NFRT, "Fail to change frequency of core %u in block status\n", core);
+		} 
 	}
 	
 	/* Wait for child nfs and other non-block nfs to quit */
 	for (i = 0; i < MAX_NFS; i++) {
 		while (nfs[i].nf_info != NULL && nfs[i].parent_nf == info->inst_id)
 			sleep(1);
-	}		
 			
+		while (nfs[i].nf_info != NULL && nfs[i].bk_flag != 2)
+			sleep(1);
+	}		
+	
+	// Stop the power management for the core running child NF
+	if (nf->parent_nf == 0) {
+		rte_power_exit(core);
+		if (ret) 
+			rte_exit(EXIT_FAILURE, "Power management exit failed on %u\n", core);
+	} 
+
 	// Stop and free
 	d2sc_nfrt_stop(info);
 	
@@ -373,11 +410,11 @@ int d2sc_nfrt_nf_ready(struct d2sc_nf_info *info) {
 }
 
 
-int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg) {
+int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg, struct d2sc_nf *nf) {
 	switch (msg->msg_type) {
 		case MSG_STOP:
 			RTE_LOG(INFO, NFRT, "Shutting down...\n");
-			d2sc_nfrt_set_bk_flag();
+			nf->bk_flag = 2;
 			keep_running = 0;
 			break;
 		case MSG_NOOP:
@@ -388,50 +425,47 @@ int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg) {
 }
 
 
-void d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info) {
+void d2sc_nfrt_check_scale_msg(struct d2sc_nf *nf) {
 	int i;
-	void *msgs[MAX_NTS];
 	struct d2sc_scale_msg *msg;	
 	struct d2sc_scale_info *scale_info;
-	int num_msgs = rte_ring_count(scale_msg_queue);
+	struct rte_ring *scale_q;
 	
-	if (num_msgs == 0) return;
-		
-	if (rte_ring_dequeue_bulk(scale_msg_queue, msgs, num_msgs, NULL) == 0)
+	scale_q = nf->scale_q;
+	
+	if (likely(rte_ring_count(scale_q) == 0))
 		return;
+
+	msg = NULL;	
+	rte_ring_dequeue(scale_q, (void**)(&msg));
 		
-	for (i = 0; i < num_msgs; i++) {
-		msg = (struct d2sc_scale_msg *) msgs[i];
-		
-		switch (msg->scale_sig) {
-			case SCALE_UP:
-				scale_info = (struct d2sc_scale_info *) msg->scale_data;
-				printf("nf %u needs scale num %u\n", nf_info->inst_id, nfs[nf_info->inst_id].scale_num);
-				if(scale_info->inst_id == nf_info->inst_id && nfs[nf_info->inst_id].scale_num != 0) {
-					d2sc_nfrt_scale_nfs(nf_info, scale_info->scale_num);
-				}
-				break;
-			case SCALE_BLOCK:
-				printf("nf %u get scale block message\n", nf_info->inst_id);
-				scale_info = (struct d2sc_scale_info *)msg->scale_data;
-				if (scale_info->inst_id == nf_info->inst_id && nfs[nf_info->inst_id].bk_flag == 1) {
-					d2sc_nfrt_scale_block(nf_info);
-				}
-				break;
-			case SCALE_RUN:
-				printf("nf %u get scale run message\n", nf_info->inst_id);
-				scale_info = (struct d2sc_scale_info *)msg->scale_data;
-				if (scale_info->inst_id == nf_info->inst_id && nfs[nf_info->inst_id].bk_flag == 2) {
-					d2sc_nfrt_scale_run(nf_info);
-				}
-				break;
-			case SCALE_NO:
-			default:
-				break;		
-		}		
-		
-		rte_mempool_put(nf_msg_pool, (void *)msg);
-	}
+	switch (msg->scale_sig) {
+		case SCALE_UP:
+			scale_info = (struct d2sc_scale_info *) msg->scale_data;
+			printf("nf %u needs scale num %u\n", nf->inst_id, nf->scale_num);
+			if(scale_info->inst_id == nf->inst_id && nf->scale_num != 0) {
+				d2sc_nfrt_scale_nfs(nf->nf_info, scale_info->scale_num);
+			}
+			break;
+		case SCALE_BLOCK:
+			printf("nf %u get scale block message\n", nf->inst_id);
+			scale_info = (struct d2sc_scale_info *)msg->scale_data;
+			if (scale_info->inst_id == nf->inst_id && nf->bk_flag == 1) {
+				d2sc_nfrt_scale_block(nf->nf_info);
+			}
+			break;
+		case SCALE_RUN:
+			printf("nf %u get scale run message\n", nf->inst_id);
+			scale_info = (struct d2sc_scale_info *)msg->scale_data;
+			if (scale_info->inst_id == nf->inst_id && nf->bk_flag == 2) {
+				d2sc_nfrt_scale_run(nf->nf_info);
+			}
+			break;
+		case SCALE_NO:
+		default:
+			break;		
+	}		
+	rte_mempool_put(nf_msg_pool, (void *)msg);
 }
 
 
@@ -543,7 +577,7 @@ int d2sc_nfrt_scale_nfs(struct d2sc_nf_info *nf_info, uint16_t num_nfs) {
 	uint16_t d_nfs = num_nfs;
 	
 	cur_lcore = rte_lcore_id();
-	nfs_lcore = rte_lcore_count() - 2;
+	nfs_lcore = rte_lcore_count() - 1;
 	
 	RTE_LOG(INFO, NFRT, "Currently running on core %u\n", cur_lcore);
 	for (core = 0, i = 0; core < nfs_lcore && i < num_nfs; core++, i++ ) {
@@ -551,6 +585,11 @@ int d2sc_nfrt_scale_nfs(struct d2sc_nf_info *nf_info, uint16_t num_nfs) {
 		cur_lcore = rte_get_next_lcore(cur_lcore, 1, 1);
 		state = rte_eal_get_lcore_state(cur_lcore);
 		if (state != RUNNING) {
+			// init power management lib for the core
+			ret = rte_power_init(cur_lcore);
+			if (ret) {
+				rte_exit(EXIT_FAILURE, "Power management library initialization failed on core %d\n", cur_lcore);
+			}
 			ret = rte_eal_remote_launch(&d2sc_nfrt_start_child, nf_info, cur_lcore);
 			if (ret == -EBUSY) {
 				RTE_LOG(INFO, NFRT, "Core %u is busy, skipping...\n", core);
@@ -683,8 +722,11 @@ d2sc_nfrt_dequeue_pkts(void **pkts, struct d2sc_nf_info *info, pkt_handler handl
 }
 
 static inline void 
-d2sc_nfrt_dequeue_new_msgs(struct rte_ring *msg_ring) {
+d2sc_nfrt_dequeue_new_msgs(struct d2sc_nf *nf) {
 	struct d2sc_nf_msg *msg;
+	struct rte_ring *msg_ring;
+	
+	msg_ring = nf->msg_q;
 	
 	/* Check whether this NF has any msgs from the manager */
 	if (likely(rte_ring_count(msg_ring) == 0)) {
@@ -692,7 +734,7 @@ d2sc_nfrt_dequeue_new_msgs(struct rte_ring *msg_ring) {
 	}
 	msg = NULL;
 	rte_ring_dequeue(msg_ring, (void **)(&msg));
-	d2sc_nfrt_handle_new_msg(msg);
+	d2sc_nfrt_handle_new_msg(msg, nf);
 	rte_mempool_put(nf_msg_pool, (void *)msg);
 }
 

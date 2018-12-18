@@ -141,12 +141,13 @@ dep_d2sc_pkt_process.o = /home/feishen/d2sc/src/d2sc_nfrt/d2sc_pkt_process.c \
  /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/rte_ethdev_core.h \
  /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/rte_string_fns.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_common.h \
- /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_msg.h \
- /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_mgr/d2sc_init.h \
  /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/rte_cycles.h \
  /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/generic/rte_cycles.h \
+ /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_msg.h \
+ /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_mgr/d2sc_init.h \
  /home/feishen/d2sc/dpdk/x86_64-native-linuxapp-gcc/include/rte_pdump.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_mgr/d2sc_stats.h \
+ /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_mgr/d2sc_scale.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_sc.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_common.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_flow_table.h \
@@ -157,7 +158,6 @@ dep_d2sc_pkt_process.o = /home/feishen/d2sc/src/d2sc_nfrt/d2sc_pkt_process.c \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_pkt_helper.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_flow_steer.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_flow_table.h \
- /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_mgr/d2sc_scale.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_pkt_process.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_sc.h \
  /home/feishen/d2sc/src/d2sc_nfrt/../d2sc_nfrt/d2sc_includes.h \

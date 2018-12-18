@@ -20,6 +20,9 @@
 #define SCALE_RUN 1
 #define SCALE_NO 0
 
+#define NF_SCALE_INFO_NAME "nf_%u_scale_info_%"PRIu64
+#define NF_SCALE_Q_NAME "nf_%u_scale_queue"
+
 extern uint8_t up_signal;
 
 struct d2sc_scale_info {
@@ -35,6 +38,26 @@ struct d2sc_scale_msg {
 	void *scale_data;
 };
 
+
+/*
+ * Get the scale queue name from the manager to an NF with an NF ID
+ */
+static inline const char * get_scale_queue_name(unsigned id) {
+	static char buffer[sizeof(NF_SCALE_Q_NAME) + 2];
+	
+	snprintf(buffer, sizeof(buffer) - 1, NF_SCALE_Q_NAME, id);
+	return buffer;
+}
+
+/* 
+ * Get the scale info name with an NF ID
+ */
+static inline const char * get_scale_info_name(unsigned id) {
+	static char buffer[sizeof(NF_SCALE_INFO_NAME) + 2];
+	
+	snprintf(buffer, sizeof(buffer) - 1, NF_SCALE_INFO_NAME, id, rte_get_tsc_cycles());
+	return buffer;
+}
 
 void d2sc_scale_check_block(uint16_t dst_type);
 

@@ -44,10 +44,10 @@ int d2sc_nfrt_ret_pkt(struct rte_mbuf *pkt, struct d2sc_nf_info *info);
 int d2sc_nfrt_nf_ready(struct d2sc_nf_info *info);
 
 
-int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg);
+int d2sc_nfrt_handle_new_msg(struct d2sc_nf_msg *msg, struct d2sc_nf *nf);
 
 
-void d2sc_nfrt_check_scale_msg(struct d2sc_nf_info *nf_info);
+void d2sc_nfrt_check_scale_msg(struct d2sc_nf *nf);
 
 
 void d2sc_nfrt_stop(struct d2sc_nf_info *info);

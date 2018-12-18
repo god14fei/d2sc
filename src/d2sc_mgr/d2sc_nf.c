@@ -303,7 +303,6 @@ inline static int d2sc_nf_run(struct d2sc_nf_info *nf_info) {
 	if (nfs[nf_id].bk_flag != 2) return -1;
 	
 	// Set the bk_flag to 0
-	printf("have set nf %u bk flag\n", nf_id);
 	nfs[nf_id].bk_flag = 0;
 	
 	// available nfs of this type add 1
