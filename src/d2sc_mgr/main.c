@@ -144,8 +144,6 @@ static int scale_thread_main(void *arg) {
 			}
 		}
 		
-		// Check the NF block signal
-		//d2sc_scale_block_signal();
 		for (i = 0; i < MAX_NFS; i++) {
 			if (!d2sc_nf_is_valid(&nfs[i])) {
 				continue;
@@ -164,6 +162,9 @@ static int scale_thread_main(void *arg) {
 			// // Tell parent NF to run if all NFs are blocked	
 			if (nfs_per_nt_available[i] == 0) {
 				d2sc_scale_check_block(i);
+			} else {
+				// Check the NF block signal
+				d2sc_scale_check_load(i);
 			}
 		}
 	}

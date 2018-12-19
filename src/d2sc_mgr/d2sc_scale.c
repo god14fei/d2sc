@@ -131,26 +131,51 @@ void d2sc_scale_check_block(uint16_t dst_type) {
 }
 
 
-//void d2sc_scale_block_signal(void) {
-//	uint16_t i;
-//	static uint32_t cnter = 0;
-//	static uint32_t check_interval = 5;
-//	
-//	for (i = 0; i < MAX_NFS; i++) {
-//		if (!d2sc_nf_is_valid(&nfs[i]))
-//			continue;
-//		
-//		printf("The NF %u ring size is %u\n", i, d2sc_scale_get_free_size(i));
-//		/* Check whether the NF queue is empty */
-//		if (d2sc_scale_get_free_size(i) == NF_RING_SIZE - 1) {
-//			// The NF queue keeps empty in 5 checks
-//			if (++cnter == check_interval) {
-//				nfs[i].bk_flag = 1;
-//				cnter = 0;
-//			}
-//		}
-//	}
-//}
+void d2sc_scale_check_load(uint16_t type_id) {
+	uint16_t i;
+	uint16_t nf_id;
+	uint16_t srv_time;
+	uint64_t max_load;
+	uint64_t dif_load;
+	uint64_t load = 0;
+	static uint32_t cnter = 0;
+	static uint32_t check_interval = 5;
+	
+	uint16_t num_available = nfs_per_nt_available[type_id];
+	
+			
+	for (i = 0; i < MAX_NFS; i++) {
+		if (!d2sc_nf_is_valid(&nfs[i]))
+			continue;
+		
+		// Skip the NFs that do not get the service time info temporarily	
+		if (nfs[i].nf_info->srv_time == 0)
+			continue;
+			
+		srv_time = nfs[i].nf_info->srv_time;
+		max_load = nfs[i].nf_info->max_load;
+		if (nfs[i].nf_info->type_id == type_id) {
+			load += (uint64_t)(nfs[i].pkt_rate * srv_time);
+		}
+	}
+	
+	dif_load = max_load * num_available - load;
+	if (dif_load >= max_load) {
+		// The load difference keeps larger than max_load in 5 checks
+		if (++cnter == check_interval) {
+			// Find an ID to block from max to min
+			uint16_t nt_num = nfs_per_nt_num[type_id];
+			while (1) {
+				nf_id = nts[type_id][nt_num];
+				if (nfs[nf_id].nf_info->status != NF_BLOCKED) {
+					break;
+				} 
+				else nt_num--;
+			}
+			d2sc_scale_block_execute(nf_id, SCALE_BLOCK);
+		}
+	}
+}
 
 
 void d2sc_scale_up_execute(uint16_t nf_id) {

@@ -296,7 +296,7 @@ cbk_handler callback) {
 	
 	core = rte_lcore_id();
 	cur_freq = rte_power_get_freq(core);
-	printf("current frequency is %lu\n", cur_freq);
+	printf("current frequency index is %lu\n", cur_freq);
 	
 	printf("\n NF %d handling packets\n", info->inst_id);
 	
@@ -318,7 +318,6 @@ cbk_handler callback) {
 			}
 			
 			nb_pkts = d2sc_nfrt_dequeue_pkts((void **)pkts, info, handler);
-		
 			if (likely(nb_pkts > 0)) {
 				d2sc_pkt_process_tx_batch(nf->nf_bq, pkts, nb_pkts, nf);
 			} else {
