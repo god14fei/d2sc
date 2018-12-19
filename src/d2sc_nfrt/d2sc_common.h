@@ -117,7 +117,7 @@ struct d2sc_nf_info {
 	uint16_t type_id;
 	uint8_t status;
 	uint16_t srv_time;		// service time of an NF 
-	uint64_t max_load;		// max load of an NF, specified by the provider
+	uint16_t max_load;		// max load of an NF, specified by the provider
 	const char *name;
 };
 
