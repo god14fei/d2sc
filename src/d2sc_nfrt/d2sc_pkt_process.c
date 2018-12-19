@@ -233,7 +233,6 @@ void d2sc_pkt_enqueue_tx_ring(struct pkt_buf *nf_buf, uint16_t nf_id) {
 		return;
 	
 	ret = rte_ring_enqueue_bulk(nfs[nf_id].tx_q, (void **)nf_buf->buf, nf_buf->cnt, NULL);
-	printf("ret = %u\n", ret);
 	if (unlikely(nf_buf->cnt > 0 && ret == 0)) {
 		nfs[nf_id].stats.tx_drop += nf_buf->cnt;
 		d2sc_pkt_drop_batch(nf_buf->buf, nf_buf->cnt);
