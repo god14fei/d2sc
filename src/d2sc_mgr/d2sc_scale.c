@@ -37,7 +37,7 @@ void d2sc_scale_check_overload(void) {
 	uint64_t load;
 	uint16_t nt_id;
 	uint16_t srv_time;
-	uint64_t max_load;
+	uint16_t max_load;
 	uint32_t used_size;
 	
 	for (i = 0; i < MAX_NFS; i++) {
@@ -53,7 +53,7 @@ void d2sc_scale_check_overload(void) {
 		/* The load of an NF is a product of its packet arrival rate and the per-packet processing time */	
 		srv_time = nfs[i].nf_info->srv_time;
 		max_load = nfs[i].nf_info->max_load;
-		load = (uint64_t)(nfs[i].pkt_rate * srv_time);
+		load = nfs[i].pkt_rate * srv_time;
 		printf("the load of NF %u is %u\n", i, load);
 		if (load >= max_load) {
 			RTE_LOG(INFO, MGR, "Have detected overloaded NF %u with NF type %u\n", i, nt_id);
@@ -135,9 +135,9 @@ void d2sc_scale_check_load(uint16_t type_id) {
 	uint16_t i;
 	uint16_t nf_id;
 	uint16_t srv_time;
-	uint64_t max_load;
-	uint64_t dif_load;
-	uint64_t load = 0;
+	uint16_t max_load;
+	uint16_t dif_load;
+	uint16_t load = 0;
 	static uint32_t cnter = 0;
 	static uint32_t check_interval = 5;
 	
@@ -154,23 +154,24 @@ void d2sc_scale_check_load(uint16_t type_id) {
 		if (nfs[i].nf_info->type_id == type_id) {
 			srv_time = nfs[i].nf_info->srv_time;
 			max_load = nfs[i].nf_info->max_load;
-			load += (uint64_t)(nfs[i].pkt_rate * srv_time);
+			load += nfs[i].pkt_rate * srv_time;
 		}
 	}
 	
 	dif_load = max_load * num_available - load;
-	if (dif_load >= max_load) {
+	if (dif_load >= max_load && num_available > 1) {
 		// The load difference keeps larger than max_load in 5 checks
 		if (++cnter == check_interval) {
 			// Find an ID to block from max to min
 			uint16_t nt_num = nfs_per_nt_num[type_id];
 			while (1) {
-				nf_id = nts[type_id][nt_num];
-				if (nfs[nf_id].nf_info->status != NF_BLOCKED) {
+				nf_id = nts[type_id][nt_num-1];
+				if (nfs[nf_id].nf_info->status == NF_RUNNING) {
 					break;
 				} 
 				else nt_num--;
 			}
+			RTE_LOG(INFO, MGR, "Set block flag for nf %u\n", nf_id);
 			nfs[nf_id].bk_flag = 1;
 			d2sc_scale_block_execute(nf_id, SCALE_BLOCK);
 			cnter = 0;
