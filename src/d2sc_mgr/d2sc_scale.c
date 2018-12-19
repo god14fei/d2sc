@@ -151,9 +151,9 @@ void d2sc_scale_check_load(uint16_t type_id) {
 		if (nfs[i].nf_info->srv_time == 0)
 			continue;
 			
-		srv_time = nfs[i].nf_info->srv_time;
-		max_load = nfs[i].nf_info->max_load;
 		if (nfs[i].nf_info->type_id == type_id) {
+			srv_time = nfs[i].nf_info->srv_time;
+			max_load = nfs[i].nf_info->max_load;
 			load += (uint64_t)(nfs[i].pkt_rate * srv_time);
 		}
 	}
