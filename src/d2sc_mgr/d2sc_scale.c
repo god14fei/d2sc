@@ -142,7 +142,6 @@ void d2sc_scale_check_load(uint16_t type_id) {
 	static uint32_t check_interval = 5;
 	
 	uint16_t num_available = nfs_per_nt_available[type_id];
-	
 			
 	for (i = 0; i < MAX_NFS; i++) {
 		if (!d2sc_nf_is_valid(&nfs[i]))
@@ -173,6 +172,7 @@ void d2sc_scale_check_load(uint16_t type_id) {
 				else nt_num--;
 			}
 			d2sc_scale_block_execute(nf_id, SCALE_BLOCK);
+			cnter = 0;
 		}
 	}
 }
