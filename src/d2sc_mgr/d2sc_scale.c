@@ -171,6 +171,7 @@ void d2sc_scale_check_load(uint16_t type_id) {
 				} 
 				else nt_num--;
 			}
+			nfs[nf_id].bk_flag = 1;
 			d2sc_scale_block_execute(nf_id, SCALE_BLOCK);
 			cnter = 0;
 		}
