@@ -33,6 +33,7 @@
 #include "aes.h"
 
 #define NF_NAME "encryptor"
+#define MAX_LOAD_ENC 408 
 
 /* Struct that contains information about this NF */
 struct d2sc_nf_info *nf_info;
@@ -203,7 +204,7 @@ int main(int argc, char *argv[]) {
 
 	const char *progname = argv[0];
 
-	if ((arg_offset = d2sc_nfrt_init(argc, argv, NF_NAME, &nf_info)) < 0)
+	if ((arg_offset = d2sc_nfrt_init(argc, argv, NF_NAME, &nf_info, MAX_LOAD_ENC)) < 0)
 		return -1;
 		
 	argc -= arg_offset;

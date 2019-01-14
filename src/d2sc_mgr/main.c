@@ -132,6 +132,7 @@ static int scale_thread_main(void *arg) {
 	for (; worker_keep_running && sleep(scale_iter) <= scale_iter;) {
 		d2sc_scale_check_overload();
 		d2sc_scale_up_signal();
+		/* NF scale up */
 		if (up_signal == 1) {
 			for (i = 0; i < MAX_NFS; i++) {
 				if (!d2sc_nf_is_valid(&nfs[i]))
@@ -144,6 +145,8 @@ static int scale_thread_main(void *arg) {
 			}
 		}
 		
+		/* NF block */
+		//d2sc_scale_check_block();
 		for (i = 0; i < MAX_NFS; i++) {
 			if (!d2sc_nf_is_valid(&nfs[i])) {
 				continue;
@@ -154,16 +157,17 @@ static int scale_thread_main(void *arg) {
 				d2sc_scale_block_execute(i, SCALE_BLOCK);
 			}
 		}
-
+		
+		/* NF rerun and block */
 		for (i = 0; i < num_nts; i++) {
 			if (nfs_per_nt_num[i] == 0)
 				continue;
 			
-			// // Tell parent NF to run if all NFs are blocked	
+			// Tell parent NF to run if all NFs are blocked	
 			if (nfs_per_nt_available[i] == 0) {
-				d2sc_scale_check_block(i);
+				d2sc_scale_run_parent(i);
 			} else {
-				// Check the NF block signal
+				// Check the sum load of NFs
 				d2sc_scale_check_load(i);
 			}
 		}

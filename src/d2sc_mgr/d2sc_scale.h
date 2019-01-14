@@ -59,7 +59,9 @@ static inline const char * get_scale_info_name(unsigned id) {
 	return buffer;
 }
 
-void d2sc_scale_check_block(uint16_t dst_type);
+void d2sc_scale_check_block(void);
+
+void d2sc_scale_run_parent(uint16_t dst_type);
 
 void d2sc_scale_check_load(uint16_t type_id);
 

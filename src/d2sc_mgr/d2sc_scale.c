@@ -69,6 +69,9 @@ void d2sc_scale_check_overload(void) {
 				d2sc_scale_block_to_run(nt_id, scale_nfs);
 				nfs[i].scale_num = 0;
 			} else {
+				if (block_nfs > 0) {
+					d2sc_scale_block_to_run(nt_id, block_nfs);
+				}
 				nfs[i].scale_num = scale_nfs - block_nfs;
 			}
 			
@@ -82,7 +85,6 @@ void d2sc_scale_check_overload(void) {
 		
 		nt_id = nfs[i].nf_info->type_id;	
 		used_size = d2sc_scale_get_used_size(i);
-		printf("nf %u ring used size %u\n", i, used_size);
 		if (used_size == NF_RING_SIZE - 1) {	// if the RX queue of an NF is full
 			if (nfs[i].ol_flag == 0) {
 				nfs[i].ol_flag = 1;
@@ -91,6 +93,28 @@ void d2sc_scale_check_overload(void) {
 					nfs[i].scale_num++;
 			}
 		}			
+	}
+}
+
+void d2sc_scale_check_block(void) {
+#define MAX_CHECK_ITERS 105000000
+	int i;
+	static uint16_t rx_idle_cnt = 0;
+	
+	for (i = 0; i < MAX_NFS; i++) {
+		if (!d2sc_nf_is_valid(&nfs[i]))
+			continue;
+			
+		if (nfs[i].pkt_rate == 0) {
+			rx_idle_cnt++;
+			printf("packet rate of nf %u is %u\n", i, nfs[i].pkt_rate);
+			if (rx_idle_cnt > MAX_CHECK_ITERS && nfs[i].parent_nf != 0) {
+				// block the child NF
+				printf("set block flag for nf %u\n", i);
+				nfs[i].bk_flag = 1;
+				rx_idle_cnt = 0;
+			}
+		}
 	}
 }
 
@@ -111,7 +135,7 @@ void d2sc_scale_up_signal(void) {
 }
 
 
-void d2sc_scale_check_block(uint16_t dst_type) {
+void d2sc_scale_run_parent(uint16_t dst_type) {
 	uint16_t i;
 	struct d2sc_scale_info *scale_info;
 	

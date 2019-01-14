@@ -41,14 +41,24 @@ uint16_t d2sc_sc_nt_to_nf_map(uint16_t type_id, struct rte_mbuf *pkt) {
 	uint16_t inst_id = nts[type_id][inst_index];
 	
 	// Skip the blocked NF
-	while (nfs[inst_id].bk_flag == 2) {
-		// find the next instance id
-		inst_id++;
-		if (inst_id > num_nfs_per_nt) {
-			inst_id = inst_id % num_nfs_per_nt;
+	if (nfs[inst_id].bk_flag == 2) {
+		// find the next instance id 
+		for (; ;) {
+			inst_id++;
+			// Make sure the inst id is valid
+			if (inst_id >= MAX_NFS) {
+				inst_id = inst_id % MAX_NFS;
+			}
+			if (!d2sc_nf_is_valid(&nfs[inst_id]))
+				continue;
+		
+			if (nfs[inst_id].nf_info->type_id == type_id && nfs[inst_id].bk_flag != 2)
+				return inst_id;
 		}
+		
+	} else {
+		return inst_id;
 	}
-	return inst_id;
 }
 
 int d2sc_sc_merge_entry(struct d2sc_sc *sc, uint8_t act, uint16_t dst) {

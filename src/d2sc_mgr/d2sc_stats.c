@@ -45,6 +45,7 @@ static void d2sc_stats_flush(void);
 /*********************Stats Output Streams************************************/
 
 static FILE *stats_out;
+const unsigned verbosity_level = 2;
 
 
 /****************************Interfaces***************************************/
@@ -146,8 +147,16 @@ static void d2sc_stats_display_nfs(unsigned stime) {
 	static uint64_t rx_drop_last[MAX_NFS];
 	static uint64_t tx_drop_last[MAX_NFS];
 	
-	fprintf(stats_out, "\nNFS\n");
-	fprintf(stats_out, "------\n");
+	static const char *NF_MSG[3];
+	
+	NF_MSG[0] = "\nNF IID / TID     rx_pps  /  tx_pps     rx_drop  /  tx_drop         out   /    tonf     /   drop\n-----------------------------------------------------------------------------------------------\n";
+	NF_MSG[1] = "\nNF IID / TID     rx_pps  /  tx_pps            rx  /  tx                out   /    tonf     /   drop\n"
+			"               drop_pps  /  drop_pps     rx_drop  /  tx_drop           next  /    buf      /   ret\n---------------------------------------------------------------------------------------------------\n";
+	NF_MSG[2] = "";
+	
+//	fprintf(stats_out, "\nNFS\n");
+//	fprintf(stats_out, "------\n");
+	fprintf(stats_out, "%s", NF_MSG[verbosity_level-1]);
 	for (i = 0; i < MAX_NFS; i++) {
 		if (!d2sc_nf_is_valid(&nfs[i]))
 			continue;
@@ -168,12 +177,25 @@ static void d2sc_stats_display_nfs(unsigned stime) {
 		const uint64_t rx_drop_rate = (rx_drop - rx_drop_last[i]) / stime;
 		const uint64_t tx_drop_rate = (tx_drop - tx_drop_last[i]) / stime;
 		
-		fprintf(stats_out, "NF %2u - rx: %13"PRIu64" rx_drop: %13"PRIu64" next: %13"PRIu64" drop: %13"PRIu64" ret: %13"PRIu64"\n"
-			"	tx: %13"PRIu64" tx_drop: %13"PRIu64" out:  %13"PRIu64" tonf: %13"PRIu64" buf: %13"PRIu64" \n"
-			" \trx_pps: %9"PRIu64" rx_drop_rate: %8"PRIu64" tx_pps:   %9"PRIu64" tx_drop_rate:  %9"PRIu64"\n",
-			nfs[i].nf_info->inst_id, rx, rx_drop, act_next, act_drop, tx_ret,
-			tx, tx_drop, act_out, act_tonf, tx_buf,
-			rx_pps, rx_drop_rate, tx_pps, tx_drop_rate);
+		if (verbosity_level == 1) {
+			fprintf(stats_out, "NF  %2u / %-2u  - %9"PRIu64" / %-9"PRIu64"  %9"PRIu64" / %-9"PRIu64"  %11"PRIu64" / %-11"PRIu64" / %-11"PRIu64" \n",
+				nfs[i].nf_info->inst_id, nfs[i].nf_info->type_id,
+				rx_pps, tx_pps, rx_drop, tx_drop, act_out, act_tonf, act_drop);
+		} else {
+			fprintf(stats_out, "NF  %2u / %-2u  - %9"PRIu64" / %-9"PRIu64"  %11"PRIu64" / %-11"PRIu64"  %11"PRIu64" / %-11"PRIu64" / %-11"PRIu64"\n"
+				"               %9"PRIu64" / %-9"PRIu64"  %11"PRIu64" / %-11"PRIu64"  %11"PRIu64" / %-11"PRIu64" / %-11"PRIu64"\n",
+				nfs[i].nf_info->inst_id, nfs[i].nf_info->type_id,
+				rx_pps, tx_pps, rx, tx, act_out, act_tonf, act_drop,
+				rx_drop_rate, tx_drop_rate, rx_drop, tx_drop, act_next, tx_buf, tx_ret);
+		}
+
+		
+//		fprintf(stats_out, "NF %2u - rx: %13"PRIu64" rx_drop: %13"PRIu64" next: %13"PRIu64" drop: %13"PRIu64" ret: %13"PRIu64"\n"
+//			"	tx: %13"PRIu64" tx_drop: %13"PRIu64" out:  %13"PRIu64" tonf: %13"PRIu64" buf: %13"PRIu64" \n"
+//			" \trx_pps: %9"PRIu64" rx_drop_rate: %8"PRIu64" tx_pps:   %9"PRIu64" tx_drop_rate:  %9"PRIu64"\n",
+//			nfs[i].nf_info->inst_id, rx, rx_drop, act_next, act_drop, tx_ret,
+//			tx, tx_drop, act_out, act_tonf, tx_buf,
+//			rx_pps, rx_drop_rate, tx_pps, tx_drop_rate);
 			
 		rx_last[i] = rx;
 		tx_last[i] = tx;

@@ -26,7 +26,7 @@ static int d2sc_nfrt_init_premises(int argc, char *argv[]);
 static int d2sc_nfrt_start_nf(struct d2sc_nf_info *nf_info);
 
 
-int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name, struct d2sc_nf_info **nf_info_p);
+int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name, struct d2sc_nf_info **nf_info_p, uint16_t max_load);
 
 
 int d2sc_nfrt_run_callback(struct d2sc_nf_info *info, 

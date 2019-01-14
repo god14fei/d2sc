@@ -69,7 +69,7 @@
 
 #define NO_FLAGS 0
 
-#define D2SC_NUM_RX_THREADS 1
+#define D2SC_NUM_RX_THREADS 2
 
 /*************************External global variables***************************/
 

@@ -16,7 +16,7 @@ $(error "Please define RTE_SDK environment variable")
 endif
 
 # To add new examples, append the directory name to this variable
-examples = basic_monitor
+examples = basic_monitor encryptor simple_forward
 
 clean_examples=$(addprefix clean_,$(examples))
 

@@ -195,6 +195,7 @@ inline static int d2sc_nf_ready(struct d2sc_nf_info *nf_info) {
 	nt_id = nf_info->type_id;
 	nt_num = nfs_per_nt_num[nt_id]++;
 	nfs_per_nt_available[nt_id]++;
+	printf("nt id %u, nt_num %u, info id %u\n", nt_id, nt_num, nf_info->inst_id);
 	nts[nt_id][nt_num] = nf_info->inst_id;
 	num_nfs++;
 	

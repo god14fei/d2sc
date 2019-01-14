@@ -33,8 +33,7 @@
 
 
 #define D2SC_NO_CALLBACK NULL
-#define MAX_LOAD 500
-#define MAX_CHECK_ITERS 105000000 // equal to 5s
+#define MAX_LOAD 50000
 
 
 /******************************Global Variables*******************************/
@@ -92,7 +91,7 @@ static void d2sc_nfrt_usage(const char *progname);
 
 static void d2sc_nfrt_handle_signal(int sig);
 
-static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name);
+static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name, uint16_t max_load);
 
 static void d2sc_nfrt_nf_bq_init(struct d2sc_nf *nf);
 
@@ -237,7 +236,7 @@ static int d2sc_nfrt_start_nf(struct d2sc_nf_info *nf_info) {
 }
 
 
-int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name, struct d2sc_nf_info **nf_info_p) {
+int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name, struct d2sc_nf_info **nf_info_p, uint16_t max_load) {
 	struct d2sc_nf_info *nf_info;
 	int ret_eal, ret_parse, ret_final;
 	
@@ -267,7 +266,7 @@ int d2sc_nfrt_init(int argc, char *argv[], const char *nf_name, struct d2sc_nf_i
 	opterr = 0; optind = 1;
 	
 	/* Initialize the info struct */
-	nf_info = d2sc_nfrt_info_init(nf_name);
+	nf_info = d2sc_nfrt_info_init(nf_name, max_load);
 	*nf_info_p = nf_info;
 	
 	d2sc_nfrt_start_nf(nf_info);
@@ -283,7 +282,7 @@ cbk_handler callback) {
 	int ret;
 	uint16_t nb_pkts, i;
 	unsigned core;
-	static uint32_t cur_freq;
+////	static uint32_t cur_freq;
 	static uint64_t last_cycle;
 	static uint64_t cur_cycles;
 	
@@ -320,14 +319,16 @@ cbk_handler callback) {
 			nb_pkts = d2sc_nfrt_dequeue_pkts((void **)pkts, info, handler);
 			if (likely(nb_pkts > 0)) {
 				d2sc_pkt_process_tx_batch(nf->nf_bq, pkts, nb_pkts, nf);
-			} else {
-				rx_idle_cnt++;
-				if (rx_idle_cnt > MAX_CHECK_ITERS && nf->parent_nf != 0) {
-					// block the child NF
-					nf->bk_flag = 1;
-					rx_idle_cnt = 0;
-				}
-			}
+			} 
+//			else {
+//				rx_idle_cnt++;
+//				if (rx_idle_cnt > MAX_CHECK_ITERS && nf->parent_nf != 0) {
+//					// block the child NF
+//					printf("set bk flag for nf %u\n", info->inst_id);
+//					nf->bk_flag = 1;
+//					rx_idle_cnt = 0;
+//				}
+//			}
 			
 			/* Flush the packet buffers */
 			d2sc_pkt_enqueue_tx_ring(nf->nf_bq->tx_buf, info->inst_id);
@@ -345,7 +346,6 @@ cbk_handler callback) {
 				info->srv_time = (cur_cycles - last_cycle) * 1000000 / rte_get_timer_hz();
 				//last_cycle = cur_cycles;
 				printf("Computed service time = %u us\n", info->srv_time);
-				printf("rte timer hz is %llu\n", rte_get_timer_hz());
 				/* Send nf srv_time msg to manager */
 				ret = d2sc_nfrt_nf_srv_time(info);
 				if (ret != 0) {
@@ -660,7 +660,7 @@ static void d2sc_nfrt_handle_signal(int sig)
 	}
 }
 
-static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name) {
+static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name, uint16_t max_load) {
 	void *mp_data;
 	struct d2sc_nf_info *info;
 	
@@ -674,7 +674,8 @@ static struct d2sc_nf_info *d2sc_nfrt_info_init(const char *name) {
 	info->inst_id = init_inst_id;
 	info->type_id = type_id;
 	info->status = NF_WAITTING_FOR_ID;
-	info->max_load = MAX_LOAD;
+//	info->max_load = MAX_LOAD;
+	info->max_load = max_load;
 	info->name = name;
 	return info;
 }
@@ -762,7 +763,7 @@ static int d2sc_nfrt_start_child(void *arg) {
 	
 	parent_nf = &nfs[nf_info->inst_id];
 	parent_nf->scale_num--;
-	child_info = d2sc_nfrt_info_init(nf_info->name);
+	child_info = d2sc_nfrt_info_init(nf_info->name, nf_info->max_load);
 	// Child NF inherits service time
 	child_info->srv_time = nf_info->srv_time;
 	

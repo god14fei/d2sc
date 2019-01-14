@@ -32,6 +32,7 @@
 #include "d2sc_pkt_helper.h"
 
 #define NF_NAME "basic_monitor"
+#define MAX_LOAD_BM 782
 //#define MAX_LOAD 500
 
 /* Struct that contains information about this NF */
@@ -168,13 +169,13 @@ packet_handler(struct rte_mbuf* pkt, struct d2sc_pkt_meta* meta, __attribute__((
 
 int main(int argc, char *argv[]) {
 	int arg_offset;
-	unsigned cur_lcore;
+//	unsigned cur_lcore;
 	
 	const char *progname = argv[0];
 	
-	cur_lcore = rte_lcore_id();
+//	cur_lcore = rte_lcore_id();
 	
-	if ((arg_offset = d2sc_nfrt_init(argc, argv, NF_NAME, &nf_info)) < 0)
+	if ((arg_offset = d2sc_nfrt_init(argc, argv, NF_NAME, &nf_info, MAX_LOAD_BM)) < 0)
 		return -1;
 	argc -= arg_offset;
 	argv += arg_offset;
